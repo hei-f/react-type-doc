@@ -12,7 +12,7 @@ import type {
 } from 'ts-morph';
 import { SyntaxKind } from 'ts-morph';
 import type { TypeInfo } from '../shared/types';
-import { parseTypeInfo } from './typeParser';
+import { parseTypeInfo } from './parser';
 
 /** 组件查找结果 */
 interface ComponentFindResult {

@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { PropsDocReader } from './reader';
-import type { OutputResult, TypeInfo } from '../shared/types';
+import { PropsDocReader } from '../reader';
+import type { OutputResult, TypeInfo } from '../../shared/types';
 
 describe('PropsDocReader', () => {
   describe('构造函数和单例', () => {
@@ -639,7 +639,7 @@ describe('PropsDocReader', () => {
       expect(reader.isCircular(normalType)).toBe(false);
     });
 
-    it('isComplexType 应该正确判断复杂类型', () => {
+    it('isComplexType 应该正确判断复杂类型（无名联合类型需要括号包裹）', () => {
       const mockData: OutputResult = {
         generatedAt: '2024-01-01T00:00:00.000Z',
         keys: {},
@@ -648,20 +648,29 @@ describe('PropsDocReader', () => {
 
       const reader = PropsDocReader.create(mockData);
 
-      // 对象类型是复杂类型
-      const objectType: TypeInfo = {
-        kind: 'object',
-        text: '{ a: string }',
-      };
-      expect(reader.isComplexType(objectType)).toBe(true);
-
-      // 联合类型是复杂类型
+      // 无名联合类型是复杂类型（如 (string | number)[] 需要括号）
       const unionType: TypeInfo = {
         kind: 'union',
         text: 'string | number',
         unionTypes: [],
       };
       expect(reader.isComplexType(unionType)).toBe(true);
+
+      // 有名联合类型不是复杂类型（如 Status[] 不需要括号）
+      const namedUnionType: TypeInfo = {
+        kind: 'union',
+        text: 'Status',
+        name: 'Status',
+        unionTypes: [],
+      };
+      expect(reader.isComplexType(namedUnionType)).toBe(false);
+
+      // 对象类型不是复杂类型（花括号已界定，如 { a: string }[] 不需要括号）
+      const objectType: TypeInfo = {
+        kind: 'object',
+        text: '{ a: string }',
+      };
+      expect(reader.isComplexType(objectType)).toBe(false);
 
       // 基础类型不是复杂类型
       const primitiveType: TypeInfo = {

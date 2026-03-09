@@ -1,4 +1,5 @@
 import type {
+  FunctionParameter,
   FunctionSignature,
   OutputResult,
   TypeInfo,
@@ -84,7 +85,7 @@ function renderFunctionSignature(
       {typeParameters && typeParameters.length > 0 && (
         <>
           <Punctuation>{'<'}</Punctuation>
-          {typeParameters.map((tp, idx) => (
+          {typeParameters.map((tp: string, idx: number) => (
             <React.Fragment key={idx}>
               {idx > 0 && <Punctuation>, </Punctuation>}
               <TypeName>{tp}</TypeName>
@@ -96,7 +97,7 @@ function renderFunctionSignature(
 
       {/* 参数列表 */}
       <Punctuation>(</Punctuation>
-      {parameters.map((param, idx) => (
+      {parameters.map((param: FunctionParameter, idx: number) => (
         <React.Fragment key={idx}>
           {idx > 0 && <Punctuation>, </Punctuation>}
           {param.rest && <Punctuation>...</Punctuation>}
@@ -125,7 +126,7 @@ function renderFunctionType(
 
   // 如果有多个签名（函数重载），渲染所有签名
   if (signatures.length > 1) {
-    return signatures.map((sig, idx) => (
+    return signatures.map((sig: FunctionSignature, idx: number) => (
       <React.Fragment key={idx}>
         {idx > 0 && <Punctuation> & </Punctuation>}
         {renderFunctionSignature(sig, context)}
@@ -173,7 +174,7 @@ function renderTypeText(
       );
 
     case RENDER_TYPE.ENUM:
-      return renderInfo.values.map((val, idx) => (
+      return renderInfo.values.map((val: string, idx: number) => (
         <React.Fragment key={idx}>
           {idx > 0 && <Punctuation> | </Punctuation>}
           <StringLiteral>{val}</StringLiteral>
@@ -184,7 +185,7 @@ function renderTypeText(
       return renderFunctionType(renderInfo, context);
 
     case RENDER_TYPE.UNION:
-      return renderInfo.types.map((ut, idx) => (
+      return renderInfo.types.map((ut: TypeInfo, idx: number) => (
         <React.Fragment key={idx}>
           {idx > 0 && <Punctuation> | </Punctuation>}
           {renderTypeText(ut, context)}
@@ -299,7 +300,7 @@ function renderUnionTypeView(
           <Punctuation>= </Punctuation>
         </CodeLine>
 
-        {unionTypes.map((unionMember, idx) => {
+        {unionTypes.map((unionMember: TypeInfo, idx: number) => {
           const resolvedMember = context.reader.resolveRef(unionMember);
           const displayName = context.reader.getDisplayName(
             resolvedMember,
@@ -568,7 +569,7 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
                 </CodeLine>
 
                 {currentPropEntries.length > 0 ? (
-                  currentPropEntries.map(([propName, propInfo]) =>
+                  currentPropEntries.map(([propName, propInfo]: [string, TypeInfo]) =>
                     renderPropertyLine(propName, propInfo, context),
                   )
                 ) : (
@@ -592,7 +593,7 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
                 <Punctuation>{'{'}</Punctuation>
               </CodeLine>
 
-              {propEntries.map(([propName, propInfo]) =>
+              {propEntries.map(([propName, propInfo]: [string, TypeInfo]) =>
                 renderPropertyLine(propName, propInfo, context),
               )}
 

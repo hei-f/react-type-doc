@@ -4,8 +4,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { PropsDocReader, RENDER_TYPE } from './reader';
-import type { OutputResult, TypeInfo, TypeCategory } from '../shared/types';
+import { PropsDocReader } from '../reader';
+import { RENDER_TYPE } from '../renderTypes';
+import type { OutputResult, TypeInfo, TypeCategory } from '../../shared/types';
 
 describe('PropsDocReader - getTypeRenderInfo', () => {
   describe('renderHint 优先处理', () => {

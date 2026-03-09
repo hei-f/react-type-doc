@@ -11,7 +11,7 @@ import {
   clearTypeCache,
   getTypeCacheSnapshot,
   initParseOptions,
-} from '../core/typeParser';
+} from '../core/parser';
 import { resolveType } from '../core/typeResolver';
 import { createPathResolver } from '../shared/pathResolver';
 import type {

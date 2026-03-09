@@ -12,7 +12,7 @@ import {
   initParseOptions,
   getTypeCacheSnapshot,
   createEmptyTypeInfo,
-} from './typeParser';
+} from './parser';
 import {
   createTestProject,
   createTestFile,

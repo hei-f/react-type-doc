@@ -1,0 +1,8 @@
+# 加载 NVM 环境（如果使用 NVM）
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+# TypeScript 类型检查（检查所有文件）
+npx tsgo --incremental --noEmit || exit $?
+
+# 代码格式化和 linting（仅检查暂存文件）
+npx lint-staged

@@ -1,0 +1,58 @@
+{
+  "name": "react-type-doc-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "React TypeScript type documentation generator - monorepo",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "bun run --cwd packages/react-type-doc build",
+    "dev": "bun run --cwd packages/example dev",
+    "benchmark": "bun run --cwd packages/example benchmark",
+    "test": "bun run --cwd packages/react-type-doc test",
+    "test:ui": "bun run --cwd packages/react-type-doc test:ui",
+    "test:coverage": "bun run --cwd packages/react-type-doc test:coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md,css,less,scss}\"",
+    "type-check": "tsgo --incremental --noEmit",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{md,json}": [
+      "prettier --cache --write"
+    ],
+    "*.{js,jsx,cjs,mjs}": [
+      "eslint --no-warn-ignored --fix",
+      "prettier --cache --write"
+    ],
+    "*.{ts,tsx}": [
+      "eslint --no-warn-ignored --fix",
+      "prettier --cache --write"
+    ],
+    "*.{css,less,scss}": [
+      "prettier --cache --write"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@typescript/native-preview": "7.0.0-dev.20260108.1",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.4.2",
+    "typescript-eslint": "^8.46.4"
+  },
+  "keywords": [
+    "react",
+    "typescript",
+    "documentation",
+    "type",
+    "props"
+  ],
+  "author": "",
+  "license": "MIT"
+}

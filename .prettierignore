@@ -1,0 +1,31 @@
+# 依赖
+node_modules
+**/node_modules
+
+# 构建产物
+dist
+**/dist
+build
+**/build
+coverage
+**/coverage
+
+# 锁文件
+bun.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Git
+.git
+.husky
+
+# 生成文件
+*.log
+*.tsbuildinfo
+.tsbuildinfo
+
+# 其他
+.DS_Store
+*.md
+

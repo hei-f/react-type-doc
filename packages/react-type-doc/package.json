@@ -1,0 +1,71 @@
+{
+  "name": "react-type-doc",
+  "version": "1.0.0",
+  "description": "A powerful TypeScript type documentation generator for React components",
+  "keywords": [
+    "react",
+    "typescript",
+    "documentation",
+    "type",
+    "props",
+    "component",
+    "docgen"
+  ],
+  "homepage": "https://github.com/yourusername/react-type-doc#readme",
+  "bugs": {
+    "url": "https://github.com/yourusername/react-type-doc/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/react-type-doc.git"
+  },
+  "license": "MIT",
+  "author": "",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./runtime": {
+      "types": "./dist/runtime-entry.d.ts",
+      "import": "./dist/runtime-entry.js",
+      "require": "./dist/runtime-entry.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "react-type-doc": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "prepublishOnly": "bun run build"
+  },
+  "dependencies": {
+    "ts-morph": "^21.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "@vitest/coverage-v8": "^4.0.15",
+    "@vitest/ui": "^4.0.15",
+    "jsdom": "^27.3.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vitest": "^4.0.15"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

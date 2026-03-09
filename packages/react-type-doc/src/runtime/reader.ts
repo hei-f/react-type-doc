@@ -274,7 +274,7 @@ export class PropsDocReader {
    */
   isComplexType(typeInfo: TypeInfo): boolean {
     const resolved = this.resolveRef(typeInfo);
-    return resolved.kind === 'object' || resolved.kind === 'union';
+    return resolved.kind === 'union' && !resolved.name;
   }
 
   /**
@@ -429,6 +429,18 @@ export class PropsDocReader {
       // 联合类型
       case 'union':
         if (unionTypes && unionTypes.length > 0) {
+          // 有别名的联合类型（如 ApiResponse<User>、DocumentNode）
+          // 先展示可点击的别名名称，点击后再展示联合成员
+          // name 字段仅在检测到用户定义的类型别名时设置
+          if (resolved.name) {
+            const unionName = getTypeName(resolved);
+            return {
+              type: RENDER_TYPE.CUSTOM_EXPANDABLE,
+              name: unionName,
+              text: unionName,
+              resolved,
+            };
+          }
           return {
             type: RENDER_TYPE.UNION,
             types: unionTypes,

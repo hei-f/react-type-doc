@@ -14,8 +14,6 @@
     "rootDir": "./src",
     "composite": false,
     "removeComments": false,
-    "noEmit": false,
-    "importHelpers": false,
     "downlevelIteration": true,
     "isolatedModules": true,
     "strict": true,
@@ -27,7 +25,9 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noEmit": true,
+    "importHelpers": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

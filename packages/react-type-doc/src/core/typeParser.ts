@@ -297,6 +297,125 @@ function isBuiltinType(type: Type): boolean {
 }
 
 /**
+ * 检查符号是否来自 node_modules（排除 TypeScript 标准库）
+ * TypeScript 标准库类型（Date/RegExp/Error 等）虽然也在 node_modules 下，
+ * 但应由 isBuiltinType 标记为 builtin，而非 external
+ * @param symbol 要检查的符号
+ * @returns 符号名称（来自 node_modules 的第三方库时），否则返回 null
+ */
+function getExternalSymbolName(symbol: TsSymbol): string | null {
+  const declarations = symbol.getDeclarations();
+  if (declarations.length === 0) {
+    return null;
+  }
+
+  const sourceFile = declarations[0]?.getSourceFile();
+  if (!sourceFile) {
+    return null;
+  }
+
+  const filePath = sourceFile.getFilePath();
+  if (!filePath.includes('/node_modules/')) {
+    return null;
+  }
+
+  // 排除 TypeScript 标准库文件（由 isBuiltinType 处理，标记为 builtin）
+  if (sourceFile.compilerNode.hasNoDefaultLib === true) {
+    return null;
+  }
+  const fileName = sourceFile.getBaseName();
+  if (fileName.startsWith('lib.') && fileName.endsWith('.d.ts')) {
+    return null;
+  }
+
+  const name = symbol.getName();
+  if (!name || name === TS_ANONYMOUS_TYPE) {
+    return null;
+  }
+
+  return name;
+}
+
+/**
+ * 检测类型是否为外部库（node_modules）的类型
+ * 支持 type alias（通过 aliasSymbol）和 interface/class（通过 symbol）
+ * @param type 要检查的类型
+ * @returns 类型名称（如 "ReactNode"、"CSSProperties"），不是外部库类型时返回 null
+ */
+function getExternalLibAliasName(type: Type): string | null {
+  // 优先检查别名符号（type alias）
+  const aliasSymbol = type.getAliasSymbol();
+  if (aliasSymbol) {
+    return getExternalSymbolName(aliasSymbol);
+  }
+
+  // 后备：检查类型符号（interface / class）
+  const symbol = type.getSymbol();
+  if (symbol) {
+    return getExternalSymbolName(symbol);
+  }
+
+  return null;
+}
+
+/**
+ * 获取用户定义的类型别名文本
+ * 当类型有来自用户代码的别名（非 node_modules、非 TS 标准库、非 TS utility type）时，
+ * 返回带泛型参数的别名文本（如 "ApiResponse<User>"）
+ * @param type 要检查的类型
+ * @returns 别名文本，或 null（非用户别名时）
+ */
+function getUserDefinedAliasText(type: Type): string | null {
+  const aliasSymbol = type.getAliasSymbol();
+  if (!aliasSymbol) {
+    return null;
+  }
+
+  const aliasName = aliasSymbol.getName();
+  if (!aliasName || aliasName === TS_ANONYMOUS_TYPE) {
+    return null;
+  }
+
+  if (isTypeScriptUtilityType(aliasName)) {
+    return null;
+  }
+
+  const declarations = aliasSymbol.getDeclarations();
+  if (declarations.length === 0) {
+    return null;
+  }
+
+  const sourceFile = declarations[0]?.getSourceFile();
+  if (!sourceFile) {
+    return null;
+  }
+
+  // 排除 node_modules（由 getExternalLibAliasName 处理）
+  const filePath = sourceFile.getFilePath();
+  if (filePath.includes('/node_modules/')) {
+    return null;
+  }
+
+  // 排除 TypeScript 标准库文件
+  if (sourceFile.compilerNode.hasNoDefaultLib === true) {
+    return null;
+  }
+  const fileName = sourceFile.getBaseName();
+  if (fileName.startsWith('lib.') && fileName.endsWith('.d.ts')) {
+    return null;
+  }
+
+  // 构建带泛型参数的别名文本
+  const typeArgs = type.getAliasTypeArguments();
+  if (typeArgs.length > 0) {
+    const argTexts = typeArgs.map((arg) => cleanTypeText(arg.getText()));
+    return `${aliasName}<${argTexts.join(', ')}>`;
+  }
+
+  return aliasName;
+}
+
+/**
  * 获取类型的缓存 key
  * 支持三种类型的缓存：
  * 1. 基础类型：使用固定 key（如 $primitive:string）
@@ -777,9 +896,18 @@ function parseArrayType(
     }
   }
 
+  // 如果元素类型有用户定义的别名，用别名构建数组的显示文本
+  let displayText = typeText;
+  if (elementType) {
+    const elementAliasText = getUserDefinedAliasText(elementType);
+    if (elementAliasText) {
+      displayText = `${elementAliasText}[]`;
+    }
+  }
+
   return {
     kind: 'array' as TypeCategory,
-    text: typeText,
+    text: displayText,
     elementType: elementType ? recurse(elementType, visited, depth + 1) : null,
   };
 }
@@ -1247,7 +1375,6 @@ function parseObjectType(
     const allPropsAreBuiltin = Object.values(properties).every((prop) => {
       if ('$ref' in prop) return false;
       if (!('kind' in prop)) return false;
-      // 检查是否有 renderHint 为 external
       return 'renderHint' in prop && prop.renderHint === 'external';
     });
     if (allPropsAreBuiltin) {
@@ -1262,12 +1389,17 @@ function parseObjectType(
   // 检测类型中是否包含未实例化的泛型参数（使用 ts-morph API）
   const hasGenericParam = containsGenericTypeParameter(type);
 
+  // TypeScript 工具类型（Partial、Omit 等）在泛型参数未实例化时，
+  // 属性是从约束推导的不完整信息，排除以避免误导
+  // 自定义泛型类型（如 Box<T>）保留属性，因为属性是直接声明的
+  const isUtilityWithGeneric =
+    hasGenericParam && isTypeScriptUtilityType(typeText);
+
   return {
     ...buildNameField(displayName, typeText),
     kind: 'object' as TypeCategory,
     text: typeText,
-    ...(hasProperties ? { properties } : {}),
-    // 如果类型包含未实例化的泛型参数，添加标记（无论是否有属性）
+    ...(hasProperties && !isUtilityWithGeneric ? { properties } : {}),
     ...(hasGenericParam ? { isGeneric: true } : {}),
     ...symbolLocation,
   };
@@ -1413,7 +1545,24 @@ function parseTypeInfoRecursive(
   const typeId = getTypeUniqueId(type);
   const typeName = getTypeDisplayName(type, typeText);
 
-  // 4. 索引访问类型特殊处理
+  // 4. 外部库类型别名保留
+  // 当类型是 node_modules 中定义的类型（如 ReactNode、CSSProperties）时，
+  // 保留类型名称不展开，避免将其解析为实际的联合类型或内部结构
+  const externalAliasName = getExternalLibAliasName(type);
+  if (externalAliasName && !isTypeScriptUtilityType(externalAliasName)) {
+    return {
+      kind: 'object' as TypeCategory,
+      renderHint: 'external' as RenderHint,
+      text: externalAliasName,
+    };
+  }
+
+  // 4.5 用户定义的类型别名检测
+  // 对于来自用户代码的类型别名（如 ApiResponse<User>、DocumentNode），
+  // 保留别名名称用于显示，底层结构仍会被解析
+  const userAliasText = getUserDefinedAliasText(type);
+
+  // 5. 索引访问类型特殊处理
   // 问题：T["xxx"] 在 TypeScript 中会被解析为目标类型的对象形式（如 String 对象，包含所有原型方法）
   // 原因：TypeScript 的类型擦除机制，无法在编译时获取泛型约束的实际类型
   // 解决：标记 renderHint='index-access'，保留索引访问表达式的字面形式
@@ -1509,7 +1658,14 @@ function parseTypeInfoRecursive(
       };
   }
 
-  // 6. 对联合类型进行规范化：X | undefined 简化为 X
+  // 6. 应用用户定义的别名文本
+  // 将别名名称写入 name 字段，使 UI 层能展示类型别名（如 ApiResponse<User>）
+  // text 保留底层结构表示，name 作为显示名称（UI 通过 name ?? text 获取显示名）
+  if (userAliasText && !isTypeRef(result)) {
+    result = { ...result, name: userAliasText };
+  }
+
+  // 7. 对联合类型进行规范化：X | undefined 简化为 X
   // 这样可以复用已有的类型缓存，减少重复
   if (kind === 'union' && containsUndefined(result)) {
     const simplified = simplifyOptionalUnion(result);

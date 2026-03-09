@@ -18,7 +18,7 @@ import {
   createTestFile,
   getExportedType,
 } from '../__tests__/helpers/testUtils';
-import type { Project } from 'ts-morph';
+import { Project } from 'ts-morph';
 
 describe('typeParser', () => {
   let project: Project;
@@ -1786,6 +1786,145 @@ describe('typeParser', () => {
       if (type) {
         const typeInfo = parseTypeInfo(type);
         expect(typeInfo).toBeDefined();
+      }
+    });
+  });
+
+  describe('泛型类型属性排除', () => {
+    it('含未实例化泛型参数的 Partial<T> 不应输出 properties', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export interface Wrapper<T> {
+          partial: Partial<T>;
+        }
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'Wrapper');
+      expect(type).toBeDefined();
+
+      const typeInfo = parseTypeInfo(type!);
+      if ('kind' in typeInfo && typeInfo.kind === 'object' && typeInfo.properties) {
+        const partialProp = typeInfo.properties.partial;
+        expect(partialProp).toBeDefined();
+
+        if (partialProp && 'kind' in partialProp) {
+          expect(partialProp.kind).toBe('object');
+          expect(partialProp.isGeneric).toBe(true);
+          expect(partialProp.properties).toBeUndefined();
+        }
+      }
+    });
+
+    it('已实例化的 Partial<User> 应保留 properties', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        interface User { id: number; name: string; }
+        export type PartialUser = Partial<User>;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'PartialUser');
+      expect(type).toBeDefined();
+
+      const typeInfo = parseTypeInfo(type!);
+      if ('kind' in typeInfo && typeInfo.kind === 'object') {
+        expect(typeInfo.isGeneric).toBeUndefined();
+        expect(typeInfo.properties).toBeDefined();
+      }
+    });
+  });
+
+  describe('自定义泛型类型保留属性', () => {
+    it('自定义泛型类型应保留 properties 和 isGeneric 标记', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export interface Box<T> {
+          value: T;
+        }
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'Box');
+      expect(type).toBeDefined();
+
+      const typeInfo = parseTypeInfo(type!);
+      if ('kind' in typeInfo && typeInfo.kind === 'object') {
+        expect(typeInfo.isGeneric).toBe(true);
+        expect(typeInfo.properties).toBeDefined();
+        expect(typeInfo.properties).toHaveProperty('value');
+      }
+    });
+  });
+
+  describe('外部库类型别名保留', () => {
+    it('node_modules 中定义的复杂类型别名应标记为 external', () => {
+      const externalProject = new Project({
+        compilerOptions: {
+          target: 99,
+          module: 99,
+          moduleResolution: 2,
+          strict: true,
+          types: [],
+        },
+        useInMemoryFileSystem: true,
+        skipFileDependencyResolution: true,
+      });
+      clearTypeCache();
+
+      // TypeScript 会擦除简单别名（如 string | number）的 aliasSymbol，
+      // 但会保留复杂类型别名。使用对象类型别名模拟 ReactNode 等场景
+      externalProject.createSourceFile(
+        'node_modules/mylib/index.d.ts',
+        `
+        export type ExternalConfig = { host: string; port: number; ssl: boolean };
+        export interface Wrapper { config: ExternalConfig; }
+        `,
+      );
+
+      const sourceFile = externalProject.getSourceFile(
+        'node_modules/mylib/index.d.ts',
+      );
+      expect(sourceFile).toBeDefined();
+
+      const wrapper = sourceFile!.getInterface('Wrapper');
+      expect(wrapper).toBeDefined();
+
+      const configProp = wrapper!.getProperty('config');
+      expect(configProp).toBeDefined();
+
+      const configType = configProp!.getType();
+      const hasAlias = configType.getAliasSymbol() !== undefined;
+
+      // 如果 TypeScript 保留了别名信息，验证 external 标记
+      if (hasAlias) {
+        const typeInfo = parseTypeInfo(configType);
+        if ('kind' in typeInfo) {
+          expect(typeInfo.renderHint).toBe('external');
+          expect(typeInfo.text).toBe('ExternalConfig');
+        }
+      }
+    });
+
+    it('非 node_modules 中定义的类型别名不应标记为 external', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `export type LocalType = string | number;`,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'LocalType');
+      expect(type).toBeDefined();
+
+      const typeInfo = parseTypeInfo(type!);
+      if ('kind' in typeInfo) {
+        expect(typeInfo.renderHint).toBeUndefined();
       }
     });
   });

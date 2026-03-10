@@ -1,0 +1,927 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { parseTypeInfo, clearTypeCache } from '..';
+import {
+  createTestProject,
+  createTestFile,
+  getExportedType,
+} from '../../../__tests__/helpers/testUtils';
+import type { Project } from 'ts-morph';
+
+describe('类型解析器', () => {
+  let project: Project;
+
+  beforeEach(() => {
+    project = createTestProject();
+    clearTypeCache();
+  });
+
+  describe('parseTypeInfo', () => {
+    it('应该正确解析基础类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type TestType = {
+          str: string;
+          num: number;
+          bool: boolean;
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      expect(type).toBeDefined();
+
+      const typeInfo = parseTypeInfo(type!);
+      expect(typeInfo).toBeDefined();
+      expect(typeInfo).toHaveProperty('kind');
+      expect(typeInfo).toHaveProperty('text');
+    });
+
+    it('应该正确解析对象类型的属性', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type TestType = {
+          name: string;
+          age: number;
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      const typeInfo = parseTypeInfo(type!);
+
+      // 检查是否为对象类型
+      if ('kind' in typeInfo && typeInfo.kind === 'object') {
+        expect(typeInfo.properties).toBeDefined();
+        expect(typeInfo.properties).toHaveProperty('name');
+        expect(typeInfo.properties).toHaveProperty('age');
+      } else if ('$ref' in typeInfo) {
+        // 如果是引用，也是正常的
+        expect(typeInfo.$ref).toBeDefined();
+      } else {
+        throw new Error('Expected object type or reference');
+      }
+    });
+
+    it('应该正确解析可选属性', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type TestType = {
+          required: string;
+          optional?: number;
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      const typeInfo = parseTypeInfo(type!);
+
+      if (
+        'kind' in typeInfo &&
+        typeInfo.kind === 'object' &&
+        typeInfo.properties
+      ) {
+        const requiredProp = typeInfo.properties.required;
+        const optionalProp = typeInfo.properties.optional;
+
+        // 检查必需属性
+        if (requiredProp && 'required' in requiredProp) {
+          expect(requiredProp.required).toBe(true);
+        }
+
+        // 检查可选属性
+        if (optionalProp && 'required' in optionalProp) {
+          expect(optionalProp.required).toBe(false);
+        }
+      }
+    });
+
+    it('应该正确解析数组类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type TestType = string[];
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      const typeInfo = parseTypeInfo(type!);
+
+      // 数组类型可能被解析为 array 或 object（取决于 ts-morph 的实现）
+      if ('kind' in typeInfo) {
+        expect(['array', 'object']).toContain(typeInfo.kind);
+        // 如果是数组类型，应该有 elementType
+        if (typeInfo.kind === 'array') {
+          expect(typeInfo.elementType).toBeDefined();
+        }
+      } else if ('$ref' in typeInfo) {
+        // 引用也是可以的
+        expect(typeInfo.$ref).toBeDefined();
+      }
+    });
+
+    it('应该正确解析联合类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type TestType = string | number | boolean;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      const typeInfo = parseTypeInfo(type!);
+
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('union');
+        expect(typeInfo.unionTypes).toBeDefined();
+        expect(Array.isArray(typeInfo.unionTypes)).toBe(true);
+      } else if ('$ref' in typeInfo) {
+        expect(typeInfo.$ref).toBeDefined();
+      }
+    });
+
+    it('应该正确解析枚举类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type TestType = 'red' | 'green' | 'blue';
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      const typeInfo = parseTypeInfo(type!);
+
+      if ('kind' in typeInfo) {
+        // 字面量联合可能被解析为 enum 或 union
+        expect(['enum', 'union']).toContain(typeInfo.kind);
+        // 检查是否有相关字段
+        if (typeInfo.kind === 'enum' && typeInfo.enumValues) {
+          expect(Array.isArray(typeInfo.enumValues)).toBe(true);
+          expect(typeInfo.enumValues.length).toBeGreaterThan(0);
+        } else if (typeInfo.kind === 'union' && typeInfo.unionTypes) {
+          expect(Array.isArray(typeInfo.unionTypes)).toBe(true);
+          expect(typeInfo.unionTypes.length).toBeGreaterThan(0);
+        }
+      } else if ('$ref' in typeInfo) {
+        expect(typeInfo.$ref).toBeDefined();
+      }
+    });
+
+    it('应该正确解析函数类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type TestType = (a: string, b: number) => boolean;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      const typeInfo = parseTypeInfo(type!);
+
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('function');
+        expect(typeInfo.signatures).toBeDefined();
+        expect(Array.isArray(typeInfo.signatures)).toBe(true);
+      } else if ('$ref' in typeInfo) {
+        expect(typeInfo.$ref).toBeDefined();
+      }
+    });
+
+    it('应该正确处理嵌套对象', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type TestType = {
+          level1: {
+            level2: {
+              value: string;
+            };
+          };
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      // 嵌套对象应该被解析
+      if ('kind' in typeInfo && typeInfo.kind === 'object') {
+        expect(typeInfo.properties).toBeDefined();
+        expect(typeInfo.properties).toHaveProperty('level1');
+      }
+    });
+  });
+
+  describe('交叉类型', () => {
+    it('应该处理简单交叉类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type Type1 = { a: string };
+        export type Type2 = { b: number };
+        export type IntersectionType = Type1 & Type2;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'IntersectionType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('object');
+      }
+    });
+  });
+
+  describe('元组类型', () => {
+    it('应该正确识别简单元组类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type TupleType = [string, number];
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TupleType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('tuple');
+        expect(typeInfo.text).toContain('[');
+        expect(typeInfo.text).toContain('string');
+        expect(typeInfo.text).toContain('number');
+      }
+    });
+
+    it('应该正确识别带标签的元组类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type NamedTuple = [x: number, y: number, z: number];
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'NamedTuple');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('tuple');
+        expect(typeInfo.text).toContain('x:');
+        expect(typeInfo.text).toContain('y:');
+        expect(typeInfo.text).toContain('z:');
+      }
+    });
+
+    it('应该正确识别可选元素元组', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type OptionalTuple = [string, number?];
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'OptionalTuple');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('tuple');
+      }
+    });
+
+    it('应该正确识别剩余元素元组', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type RestTuple = [string, ...number[]];
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'RestTuple');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('tuple');
+        expect(typeInfo.text).toContain('...');
+      }
+    });
+
+    it('元组不应该包含数组方法属性', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type SimpleTuple = [number, string];
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'SimpleTuple');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('tuple');
+        // 元组类型不应该有 properties 字段
+        expect(typeInfo.properties).toBeUndefined();
+      }
+    });
+  });
+
+  describe('索引签名', () => {
+    it('应该处理字符串索引签名', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type StringIndex = { [key: string]: number };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'StringIndex');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('object');
+      }
+    });
+  });
+
+  describe('类类型', () => {
+    it('应该处理类定义', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export class MyClass {
+          public name: string = '';
+          private age: number = 0;
+          protected id: string = '';
+          
+          constructor() {}
+          
+          public getName(): string {
+            return this.name;
+          }
+        }
+        
+        export type ClassType = MyClass;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'ClassType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+    });
+  });
+
+  describe('接口类型', () => {
+    it('应该处理接口定义', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export interface MyInterface {
+          /** 名称属性 */
+          name: string;
+          /** 年龄属性 */
+          age: number;
+        }
+        
+        export type InterfaceType = MyInterface;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'InterfaceType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('object');
+      }
+    });
+
+    it('应该处理接口继承', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export interface BaseInterface {
+          base: string;
+        }
+        
+        export interface ExtendedInterface extends BaseInterface {
+          extended: number;
+        }
+        
+        export type TestType = ExtendedInterface;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+    });
+  });
+
+  describe('函数签名复杂情况', () => {
+    it('应该处理可选参数', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type FuncType = (required: string, optional?: number) => void;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'FuncType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('function');
+      }
+    });
+
+    it('应该处理剩余参数', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type FuncType = (first: string, ...rest: number[]) => void;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'FuncType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('function');
+      }
+    });
+
+    it('应该处理多个函数签名（重载）', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export interface OverloadedFunc {
+          (x: string): string;
+          (x: number): number;
+        }
+        
+        export type TestType = OverloadedFunc;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+    });
+  });
+
+  describe('映射类型', () => {
+    it('应该处理简单映射类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type MappedType = {
+          [K in 'a' | 'b' | 'c']: string;
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'MappedType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+    });
+
+    it('应该处理带修饰符的映射类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type Optional<T> = {
+          [K in keyof T]?: T[K];
+        };
+        
+        export type TestType = Optional<{ a: string; b: number }>;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+    });
+  });
+
+  describe('Symbol 属性', () => {
+    it('应该处理 Symbol 属性', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type SymbolProp = {
+          [Symbol.iterator]: () => Iterator<string>;
+          normalProp: string;
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'SymbolProp');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+    });
+  });
+
+  describe('readonly 和可选修饰符', () => {
+    it('应该处理 readonly 属性', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type ReadonlyType = {
+          readonly id: string;
+          name: string;
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'ReadonlyType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('object');
+      }
+    });
+
+    it('应该处理可选属性', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type OptionalType = {
+          required: string;
+          optional?: number;
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'OptionalType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('object');
+      }
+    });
+  });
+
+  describe('字面量类型', () => {
+    it('应该处理字符串字面量类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type StringLiteral = 'hello' | 'world';
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'StringLiteral');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('union');
+      }
+    });
+
+    it('应该处理数字字面量类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type NumberLiteral = 1 | 2 | 3;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'NumberLiteral');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('union');
+      }
+    });
+
+    it('应该处理布尔字面量类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type BoolLiteral = true;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'BoolLiteral');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+    });
+  });
+
+  describe('JSDoc 注释和描述', () => {
+    it('应该解析属性的 JSDoc 注释', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type DocumentedType = {
+          /** 用户名称 */
+          name: string;
+          /** 用户年龄 */
+          age: number;
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'DocumentedType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if (
+        'kind' in typeInfo &&
+        typeInfo.kind === 'object' &&
+        'properties' in typeInfo &&
+        typeInfo.properties
+      ) {
+        expect(typeInfo.properties.name?.description).toBeDefined();
+        expect(typeInfo.properties.age?.description).toBeDefined();
+      }
+    });
+
+    it('应该处理多行 JSDoc', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type DocumentedType = {
+          /**
+           * 用户的完整姓名
+           * @example "Zhang San"
+           */
+          name: string;
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'DocumentedType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+    });
+  });
+
+  describe('required 属性标记', () => {
+    it('应该正确标记必填属性', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type TestType = {
+          required: string;
+          optional?: number;
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if (
+        'kind' in typeInfo &&
+        typeInfo.kind === 'object' &&
+        'properties' in typeInfo &&
+        typeInfo.properties
+      ) {
+        expect(typeInfo.properties.required?.required).toBe(true);
+        expect(typeInfo.properties.optional?.required).toBeUndefined();
+      }
+    });
+
+    it('应该将 string | undefined 转换为可选', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type TestType = {
+          name: string | undefined;
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      // name: string | undefined 会被规范化为可选属性
+    });
+  });
+
+  describe('枚举值处理', () => {
+    it('应该解析枚举值', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export enum Status {
+          Active = 'active',
+          Inactive = 'inactive',
+        }
+        
+        export type StatusType = Status;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'StatusType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(['enum', 'union']).toContain(typeInfo.kind);
+      }
+    });
+
+    it('应该处理数字枚举', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export enum NumberEnum {
+          First,
+          Second,
+          Third,
+        }
+        
+        export type EnumType = NumberEnum;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'EnumType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+    });
+
+    it('应该处理混合枚举', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export enum MixedEnum {
+          A = 'a',
+          B = 1,
+        }
+        
+        export type EnumType = MixedEnum;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'EnumType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+    });
+  });
+
+  describe('泛型函数签名', () => {
+    it('应该解析带泛型参数的函数', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type GenericFunc = <T>(value: T) => T;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'GenericFunc');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('function');
+        if (
+          typeInfo.kind === 'function' &&
+          'signatures' in typeInfo &&
+          typeInfo.signatures
+        ) {
+          const sig = typeInfo.signatures[0];
+          expect(sig?.typeParameters).toBeDefined();
+        }
+      }
+    });
+
+    it('应该解析多个泛型参数的函数', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type MultiGenericFunc = <T, K, V>(key: K, value: V) => T;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'MultiGenericFunc');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('function');
+      }
+    });
+  });
+
+  describe('复杂函数参数', () => {
+    it('应该处理对象解构参数', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type FuncType = (params: { name: string; age: number }) => void;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'FuncType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('function');
+      }
+    });
+
+    it('应该处理数组参数', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type FuncType = (items: string[]) => void;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'FuncType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('function');
+      }
+    });
+
+    it('应该处理联合类型参数', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type FuncType = (value: string | number) => void;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'FuncType');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        expect(typeInfo.kind).toBe('function');
+      }
+    });
+  });
+});

@@ -5,7 +5,7 @@
 
 import type { SourceFile } from 'ts-morph';
 import type { TypeInfo } from '../shared/types';
-import { parseTypeInfo } from './typeParser';
+import { parseTypeInfo } from './parser';
 
 /**
  * 在模块/命名空间中递归查找类型

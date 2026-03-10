@@ -1,4 +1,5 @@
 import type {
+  FunctionParameter,
   FunctionSignature,
   OutputResult,
   TypeInfo,
@@ -84,7 +85,7 @@ function renderFunctionSignature(
       {typeParameters && typeParameters.length > 0 && (
         <>
           <Punctuation>{'<'}</Punctuation>
-          {typeParameters.map((tp, idx) => (
+          {typeParameters.map((tp: string, idx: number) => (
             <React.Fragment key={idx}>
               {idx > 0 && <Punctuation>, </Punctuation>}
               <TypeName>{tp}</TypeName>
@@ -96,7 +97,7 @@ function renderFunctionSignature(
 
       {/* 参数列表 */}
       <Punctuation>(</Punctuation>
-      {parameters.map((param, idx) => (
+      {parameters.map((param: FunctionParameter, idx: number) => (
         <React.Fragment key={idx}>
           {idx > 0 && <Punctuation>, </Punctuation>}
           {param.rest && <Punctuation>...</Punctuation>}
@@ -125,7 +126,7 @@ function renderFunctionType(
 
   // 如果有多个签名（函数重载），渲染所有签名
   if (signatures.length > 1) {
-    return signatures.map((sig, idx) => (
+    return signatures.map((sig: FunctionSignature, idx: number) => (
       <React.Fragment key={idx}>
         {idx > 0 && <Punctuation> & </Punctuation>}
         {renderFunctionSignature(sig, context)}
@@ -173,7 +174,7 @@ function renderTypeText(
       );
 
     case RENDER_TYPE.ENUM:
-      return renderInfo.values.map((val, idx) => (
+      return renderInfo.values.map((val: string, idx: number) => (
         <React.Fragment key={idx}>
           {idx > 0 && <Punctuation> | </Punctuation>}
           <StringLiteral>{val}</StringLiteral>
@@ -184,7 +185,7 @@ function renderTypeText(
       return renderFunctionType(renderInfo, context);
 
     case RENDER_TYPE.UNION:
-      return renderInfo.types.map((ut, idx) => (
+      return renderInfo.types.map((ut: TypeInfo, idx: number) => (
         <React.Fragment key={idx}>
           {idx > 0 && <Punctuation> | </Punctuation>}
           {renderTypeText(ut, context)}
@@ -237,22 +238,11 @@ function renderTypeText(
             }
             title={
               isGeneric
-                ? `${renderInfo.name} 包含未实例化的类型参数 - 点击查看从约束推导的属性结构`
+                ? `${renderInfo.name} 包含未实例化的类型参数 - 点击查看结构`
                 : '点击查看类型定义'
             }
           >
             {renderInfo.name}
-            {isGeneric && (
-              <span
-                style={{
-                  fontSize: '0.9em',
-                  color: '#f59e0b',
-                  marginLeft: '4px',
-                }}
-              >
-                {'<T>'}
-              </span>
-            )}
           </ClickableTypeName>
         );
       }
@@ -260,14 +250,9 @@ function renderTypeText(
       if (isGeneric) {
         return (
           <TypeName
-            title={`${renderInfo.name} 包含未实例化的类型参数，无法在定义时展开。需要传入具体类型才能查看完整结构。`}
+            title={`${renderInfo.name} 包含未实例化的类型参数，无法在定义时展开`}
           >
             {renderInfo.name}
-            <span
-              style={{ fontSize: '0.9em', color: '#f59e0b', marginLeft: '4px' }}
-            >
-              {'<T>'}
-            </span>
           </TypeName>
         );
       }
@@ -315,7 +300,7 @@ function renderUnionTypeView(
           <Punctuation>= </Punctuation>
         </CodeLine>
 
-        {unionTypes.map((unionMember, idx) => {
+        {unionTypes.map((unionMember: TypeInfo, idx: number) => {
           const resolvedMember = context.reader.resolveRef(unionMember);
           const displayName = context.reader.getDisplayName(
             resolvedMember,
@@ -332,10 +317,10 @@ function renderUnionTypeView(
                   onClick={() => context.onTypeClick(unionMember, displayName)}
                   title="点击查看详情"
                 >
-                  {resolvedMember.text}
+                  {displayName}
                 </ClickableTypeName>
               ) : (
-                <TypeName>{resolvedMember.text}</TypeName>
+                <TypeName>{displayName}</TypeName>
               )}
               <Punctuation>;</Punctuation>
             </CodeLine>
@@ -500,11 +485,18 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
     );
   }
 
+  // 解析当前显示的类型（需要在空状态检查之前，以判断嵌套联合类型）
+  const resolvedCurrentType = currentTypeInfo
+    ? reader.resolveRef(currentTypeInfo)
+    : null;
+  const isNestedUnion =
+    isInNestedView && resolvedCurrentType?.kind === 'union';
+
   const propEntries = reader.getPropertyEntries(
     isInNestedView ? currentTypeInfo! : typeInfo,
   );
 
-  if (propEntries.length === 0 && resolved.kind !== 'union') {
+  if (propEntries.length === 0 && resolved.kind !== 'union' && !isNestedUnion) {
     return (
       <TypeDocPanelContainer>
         <PanelHeader>
@@ -515,15 +507,10 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
     );
   }
 
-  // 解析当前显示的类型
   const currentPropEntries = currentTypeInfo
     ? reader.getPropertyEntries(currentTypeInfo)
     : [];
 
-  // 计算当前类型名称
-  const resolvedCurrentType = currentTypeInfo
-    ? reader.resolveRef(currentTypeInfo)
-    : null;
   const displayTypeName = resolvedCurrentType
     ? reader.getDisplayName(resolvedCurrentType, currentTitle)
     : currentTitle;
@@ -533,7 +520,9 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
       <PanelHeader>
         <PanelTitle>
           {isInNestedView
-            ? `${displayTypeName} — ${currentPropEntries.length} properties`
+            ? isNestedUnion
+              ? displayTypeName
+              : `${displayTypeName} — ${currentPropEntries.length} properties`
             : `${rootTitle} — ${propEntries.length} properties`}
         </PanelTitle>
       </PanelHeader>
@@ -565,29 +554,36 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
       <CodeContainer>
         <CodeContent>
           {isInNestedView ? (
-            // 嵌套类型视图
-            <>
-              <CodeLine>
-                <Keyword>interface</Keyword>
-                <TypeName> {displayTypeName} </TypeName>
-                <Punctuation>{'{'}</Punctuation>
-              </CodeLine>
-
-              {currentPropEntries.length > 0 ? (
-                currentPropEntries.map(([propName, propInfo]) =>
-                  renderPropertyLine(propName, propInfo, context),
-                )
-              ) : (
+            isNestedUnion ? (
+              renderUnionTypeView(
+                displayTypeName,
+                currentTypeInfo!,
+                context,
+              )
+            ) : (
+              <>
                 <CodeLine>
-                  <Indent $level={1} />
-                  <Comment>{'// 该类型没有可展开的属性'}</Comment>
+                  <Keyword>interface</Keyword>
+                  <TypeName> {displayTypeName} </TypeName>
+                  <Punctuation>{'{'}</Punctuation>
                 </CodeLine>
-              )}
 
-              <CodeLine>
-                <Punctuation>{'}'}</Punctuation>
-              </CodeLine>
-            </>
+                {currentPropEntries.length > 0 ? (
+                  currentPropEntries.map(([propName, propInfo]: [string, TypeInfo]) =>
+                    renderPropertyLine(propName, propInfo, context),
+                  )
+                ) : (
+                  <CodeLine>
+                    <Indent $level={1} />
+                    <Comment>{'// 该类型没有可展开的属性'}</Comment>
+                  </CodeLine>
+                )}
+
+                <CodeLine>
+                  <Punctuation>{'}'}</Punctuation>
+                </CodeLine>
+              </>
+            )
           ) : (
             // 根类型视图
             <>
@@ -597,7 +593,7 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
                 <Punctuation>{'{'}</Punctuation>
               </CodeLine>
 
-              {propEntries.map(([propName, propInfo]) =>
+              {propEntries.map(([propName, propInfo]: [string, TypeInfo]) =>
                 renderPropertyLine(propName, propInfo, context),
               )}
 

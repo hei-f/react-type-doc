@@ -3,7 +3,9 @@
  * 用于测试 componentParser 解析 React 组件 Props 的能力
  */
 
-import type { ReactNode } from 'react';
+/** 模拟 React 类型，避免测试 fixture 依赖 @types/react */
+type ReactNode = string | number | boolean | null | undefined;
+type CSSProperties = Record<string, string | number>;
 
 /** 基础组件 Props */
 export interface BasicProps {
@@ -61,7 +63,7 @@ export interface ComplexProps {
 /** 继承 Props */
 export interface BaseProps {
   className?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
 }
 
 export interface ExtendedProps extends BaseProps {

@@ -4,8 +4,9 @@
  */
 
 // 运行时 API
-export { PropsDocReader, RENDER_TYPE } from './runtime/reader';
-export type { RenderType, TypeRenderInfo } from './runtime/reader';
+export { PropsDocReader } from './runtime/reader';
+export { RENDER_TYPE } from './runtime/renderTypes';
+export type { RenderType, TypeRenderInfo } from './runtime/renderTypes';
 export { getTypeName, isPrimitiveType, isTypeRef } from './runtime/utils';
 
 // 类型定义

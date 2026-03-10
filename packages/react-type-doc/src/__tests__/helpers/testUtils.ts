@@ -111,9 +111,9 @@ export function expectTypeInfoToHaveProperty(
   let current: unknown = typeInfo;
 
   for (const path of paths) {
-    if (current === null || current === undefined) {
+    if (current === null || current === undefined || typeof current !== 'object') {
       throw new Error(
-        `Expected type info to have property '${propertyPath}', but got ${current} at '${path}'`,
+        `Expected type info to have property '${propertyPath}', but got ${String(current)} at '${path}'`,
       );
     }
     if (!(path in current)) {
@@ -121,7 +121,7 @@ export function expectTypeInfoToHaveProperty(
         `Expected type info to have property '${propertyPath}', but '${path}' not found`,
       );
     }
-    current = current[path];
+    current = (current as Record<string, unknown>)[path];
   }
 }
 

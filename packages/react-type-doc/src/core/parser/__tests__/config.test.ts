@@ -51,17 +51,6 @@ describe('配置和缓存管理', () => {
       clearTypeCache();
       expect(getTypeCacheSize()).toBe(0);
     });
-
-    it('clearTypeCache 应该清空缓存(again)', () => {
-      createTestFile(project, 'test.ts', `export type TestType = string;`);
-      const type = getExportedType(project, 'test.ts', 'TestType');
-      if (type) {
-        parseTypeInfo(type);
-      }
-      expect(getTypeCacheSize()).toBeGreaterThan(0);
-      clearTypeCache();
-      expect(getTypeCacheSize()).toBe(0);
-    });
   });
 
   describe('getTypeCacheSize', () => {
@@ -114,24 +103,6 @@ describe('配置和缓存管理', () => {
       parseTypeInfo(type!);
       const cacheSize2 = getTypeCacheSize();
       expect(cacheSize2).toBe(cacheSize1);
-    });
-
-    it('clearTypeCache 应该清空缓存', () => {
-      createTestFile(
-        project,
-        'test.ts',
-        `
-        export type TestType = string;
-      `,
-      );
-
-      const type = getExportedType(project, 'test.ts', 'TestType');
-
-      parseTypeInfo(type!);
-      expect(getTypeCacheSize()).toBeGreaterThan(0);
-
-      clearTypeCache();
-      expect(getTypeCacheSize()).toBe(0);
     });
   });
 

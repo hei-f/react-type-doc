@@ -5,7 +5,7 @@ import type {
   TypeInfo,
   RenderHint,
 } from 'react-type-doc';
-import { RENDER_HINT } from 'react-type-doc';
+import { RENDER_HINT, TYPE_CATEGORY } from 'react-type-doc';
 import { PropsDocReader, RENDER_TYPE } from 'react-type-doc/runtime';
 import type { TypeRenderInfo } from 'react-type-doc/runtime';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,6 +20,7 @@ import {
   CodeLine,
   Comment,
   EmptyState,
+  FunctionPropertyName,
   GenericParams,
   Indent,
   JsDocLink,
@@ -602,7 +603,11 @@ function renderPropertyLine(
           <Indent $level={indentLevel} />
         </>
       )}
-      <PropertyName>{propName}</PropertyName>
+      {resolved.kind === TYPE_CATEGORY.Function ? (
+        <FunctionPropertyName>{propName}</FunctionPropertyName>
+      ) : (
+        <PropertyName>{propName}</PropertyName>
+      )}
       {isOptional && <OptionalMark>?</OptionalMark>}
       <Punctuation>: </Punctuation>
       {renderTypeText(propInfo, contextWithField)}

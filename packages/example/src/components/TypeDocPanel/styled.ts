@@ -1,24 +1,43 @@
 import styled from 'styled-components';
 
-/** 代码编辑器配色 */
+/** 代码编辑器配色 (One Dark Pro) */
 const THEME = {
-  bg: '#1e1e1e',
-  lineNumberBg: '#252526',
-  lineNumber: '#858585',
-  text: '#d4d4d4',
-  keyword: '#569cd6',
-  type: '#4ec9b0',
-  property: '#9cdcfe',
-  string: '#ce9178',
-  number: '#b5cea8',
-  punctuation: '#d4d4d4',
-  comment: '#6a9955',
-  link: '#dcdcaa',
-  linkHover: '#ffcc00',
-  optional: '#ffffff',
-  generic: '#dfc184',
-  jsDocTag: '#BB7CD7',
-  jsDocLink: '#3794ff',
+  /** 面板整体背景色 (TypeDocPanelContainer) */
+  bg: '#282c34',
+  /** 行号区域背景色 */
+  lineNumberBg: '#282c34',
+  /** 行号文字颜色 */
+  lineNumber: '#495162',
+  /** 默认文本颜色 (CodeContent, TypeTooltip) */
+  text: '#abb2bf',
+  /** 关键字颜色，如 interface、type (Keyword) */
+  keyword: '#c678dd',
+  /** 类型名颜色，如 string、number、boolean (TypeName, JsDocTypeRef) */
+  type: '#e5c07b',
+  /** 属性名颜色 (PropertyName) */
+  property: '#e06c75',
+  /** 函数类型属性名颜色 (FunctionPropertyName) */
+  functionName: '#61afef',
+  /** 字符串字面量颜色 (StringLiteral) */
+  string: '#98c379',
+  /** 数字字面量颜色 (NumberLiteral) */
+  number: '#d19a66',
+  /** 标点符号颜色，如 { } ; : (Punctuation) */
+  punctuation: '#abb2bf',
+  /** 注释文字颜色 (Comment, EmptyState) */
+  comment: '#5c6370',
+  /** 可点击类型链接颜色 (ClickableTypeName) */
+  link: '#39c5bb',
+  /** 链接悬停时颜色 (ClickableTypeName:hover, JsDocLink:hover) */
+  linkHover: '#e5c07b',
+  /** 可选标记 ? 的颜色 (OptionalMark) */
+  optional: '#abb2bf',
+  /** 泛型参数颜色，如 <T = unknown> (GenericParams) */
+  generic: '#e5c07b',
+  /** JSDoc 标签颜色，如 @param、@returns (JsDocTag) */
+  jsDocTag: '#c678dd',
+  /** JSDoc 内联链接 URL 颜色 (JsDocLink) */
+  jsDocLink: '#61afef',
 };
 
 /** 类型文档面板容器 */
@@ -39,13 +58,13 @@ export const PanelHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
-  background: #2d2d2d;
-  border-bottom: 1px solid #3c3c3c;
+  background: #21252b;
+  border-bottom: 1px solid #181a1f;
 `;
 
 /** 标题文本 */
 export const PanelTitle = styled.span`
-  color: #cccccc;
+  color: #abb2bf;
   font-size: 13px;
   font-weight: 500;
 `;
@@ -64,16 +83,16 @@ export const CodeContainer = styled.div`
   }
 
   &::-webkit-scrollbar-track {
-    background: #1e1e1e;
+    background: #282c34;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #424242;
+    background: #4e5666;
     border-radius: 4px;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: #4f4f4f;
+    background: #5a6375;
   }
 `;
 
@@ -94,7 +113,7 @@ export const CodeLine = styled.div`
   padding: 0 16px;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: #2c313c;
   }
 `;
 
@@ -124,17 +143,20 @@ export const PropertyName = styled.span`
   color: ${THEME.property};
 `;
 
+/** 函数类型的属性名 */
+export const FunctionPropertyName = styled.span`
+  color: ${THEME.functionName};
+`;
+
 /** 可点击的类型（自定义类型） */
 export const ClickableTypeName = styled.span`
   color: ${THEME.link};
   cursor: pointer;
   text-decoration: underline;
-  text-decoration-style: dotted;
   text-underline-offset: 2px;
 
   &:hover {
     color: ${THEME.linkHover};
-    text-decoration-style: solid;
   }
 `;
 
@@ -177,8 +199,8 @@ export const EmptyState = styled.div`
 /** 类型提示气泡 */
 export const TypeTooltip = styled.div`
   position: absolute;
-  background: #252526;
-  border: 1px solid #454545;
+  background: #21252b;
+  border: 1px solid #3b4048;
   border-radius: 4px;
   padding: 8px 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -203,13 +225,13 @@ export const BreadcrumbWrapper = styled.div<{ $visible: boolean }>`
 
 /** 面包屑容器 */
 export const BreadcrumbContainer = styled.div`
-  background: #252526;
+  background: #21252b;
   padding: 8px 16px;
   font-size: 12px;
   display: flex;
   align-items: center;
   gap: 4px;
-  border-bottom: 1px solid #3c3c3c;
+  border-bottom: 1px solid #181a1f;
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
@@ -221,22 +243,22 @@ export const BreadcrumbContainer = styled.div`
   }
 
   &::-webkit-scrollbar-track {
-    background: #1e1e1e;
+    background: #282c34;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #424242;
+    background: #4e5666;
     border-radius: 3px;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: #4f4f4f;
+    background: #5a6375;
   }
 `;
 
 /** 面包屑项 */
 export const BreadcrumbItem = styled.span<{ $clickable?: boolean }>`
-  color: ${(props) => (props.$clickable ? '#4fc3f7' : '#cccccc')};
+  color: ${(props) => (props.$clickable ? '#61afef' : '#abb2bf')};
   cursor: ${(props) => (props.$clickable ? 'pointer' : 'default')};
   flex-shrink: 0;
 
@@ -247,7 +269,7 @@ export const BreadcrumbItem = styled.span<{ $clickable?: boolean }>`
 
 /** 面包屑分隔符 */
 export const BreadcrumbSeparator = styled.span`
-  color: #666;
+  color: #495162;
   margin: 0 4px;
   flex-shrink: 0;
 `;
@@ -279,8 +301,8 @@ export const JsDocTypeRef = styled.span`
 /** 源码位置 */
 export const SourceLocation = styled.div`
   font-size: 11px;
-  color: #666;
+  color: #495162;
   padding: 8px 16px;
-  background: #252526;
-  border-top: 1px solid #3c3c3c;
+  background: #21252b;
+  border-top: 1px solid #181a1f;
 `;

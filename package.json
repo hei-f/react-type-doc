@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "bun run --cwd packages/react-type-doc build",
+    "build": "pnpm --filter react-type-doc run build",
     "generate": "bun --cwd packages/example ../react-type-doc/src/cli/index.ts",
     "dev": "bun run --cwd packages/example dev",
     "benchmark": "bun run --cwd packages/example benchmark",
@@ -54,6 +54,14 @@
     "type",
     "props"
   ],
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
   "author": "",
   "license": "MIT"
 }

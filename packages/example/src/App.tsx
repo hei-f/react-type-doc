@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { loader } from '@monaco-editor/react';
 import type { OutputResult } from 'react-type-doc';
 import type { ComponentDoc } from 'react-docgen-typescript';
-import TypeDocPanel from './components/TypeDocPanel';
+import { TypeDocPanel, zhCN } from 'react-type-doc/ui';
 import ReactDocgenTsViewer from './components/ReactDocgenTsViewer';
 import ComparisonView from './components/ComparisonView';
 import reactTypeDocDataRaw from '../benchmark-output/react-type-doc.json';
@@ -165,7 +165,8 @@ function App() {
                   <TypeDocPanel
                     typeKey={selectedType}
                     titlePrefix="类型"
-                    typeDocData={reactTypeDocData}
+                    data={reactTypeDocData}
+                    locale={zhCN}
                   />
                 </div>
                 <div className="viewer-panel">

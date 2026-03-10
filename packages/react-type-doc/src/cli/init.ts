@@ -7,7 +7,7 @@ import fs from 'fs';
 import path from 'path';
 
 /** 配置文件模板 */
-const CONFIG_TEMPLATE = `import { defineConfig } from './scripts/reactTypeDoc';
+const CONFIG_TEMPLATE = `import { defineConfig } from 'react-type-doc';
 
 export default defineConfig({
   /** tsconfig 路径（相对于项目根目录） */
@@ -72,7 +72,7 @@ export function initConfig(projectRoot: string): boolean {
     console.log('');
     console.log('请编辑配置文件，添加需要解析的组件和类型。');
     console.log('配置完成后，运行以下命令生成类型文档：');
-    console.log('  bun run type-doc');
+    console.log('  npx react-type-doc');
     console.log('');
     return true;
   } catch (error) {

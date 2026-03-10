@@ -200,7 +200,7 @@ async function loadConfig(projectRoot: string): Promise<ReactTypeDocConfig> {
 
   if (!fs.existsSync(configPath)) {
     throw new Error(
-      '配置文件不存在。请先运行 "bun run type-doc:init" 初始化配置文件。',
+      '配置文件不存在。请先运行 "npx react-type-doc init" 初始化配置文件。',
     );
   }
 

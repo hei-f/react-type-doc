@@ -23,7 +23,18 @@ export default defineConfig({
     // enableSourceLocation: false, // 启用源码位置记录（会增大输出文件）
   },
 
-  /** 类型注册表 */
+  /** 目录扫描（自动批量注册） */
+  // scanDirs: [
+  //   {
+  //     // 扫描目录路径，自动发现子文件夹中的组件和类型
+  //     // 默认约定：子文件夹/index.tsx → 组件，子文件夹/doc.types.ts → 类型
+  //     path: '@/components',
+  //     // componentEntry: 'index.tsx',   // 可自定义组件入口文件名
+  //     // typesEntry: 'doc.types.ts',    // 可自定义类型定义文件名
+  //   },
+  // ],
+
+  /** 类型注册表（手动注册） */
   registry: {
     // 示例：解析 React 组件的 Props
     // ExampleComponent: {

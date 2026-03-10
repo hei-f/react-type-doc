@@ -1,11 +1,16 @@
 /**
  * 类型解析器
- * @description 直接查找并解析指定的类型（interface、type alias、enum 等）
+ * @description 直接查找并解析指定的类型（interface、type alias、enum、as const 变量等）
  */
 
-import type { SourceFile } from 'ts-morph';
+import { Node } from 'ts-morph';
+import type { SourceFile, VariableDeclaration } from 'ts-morph';
 import type { TypeInfo } from '../shared/types';
 import { parseTypeInfo } from './parser';
+import {
+  extractDescription,
+  resolveDescriptionLinks,
+} from './parser/utils/extractors';
 
 /**
  * 在模块/命名空间中递归查找类型
@@ -28,21 +33,24 @@ function resolveNamespacedTypeInModule(
     const interfaceDecl = module.getInterface(typeName);
     if (interfaceDecl) {
       const type = interfaceDecl.getType();
-      return parseTypeInfo(type);
+      const result = parseTypeInfo(type);
+      return attachDescription(result, interfaceDecl);
     }
 
     // 尝试查找 type alias
     const typeAlias = module.getTypeAlias(typeName);
     if (typeAlias) {
       const type = typeAlias.getType();
-      return parseTypeInfo(type);
+      const result = parseTypeInfo(type);
+      return attachDescription(result, typeAlias);
     }
 
     // 尝试查找 enum
     const enumDecl = module.getEnum(typeName);
     if (enumDecl) {
       const type = enumDecl.getType();
-      return parseTypeInfo(type);
+      const result = parseTypeInfo(type);
+      return attachDescription(result, enumDecl);
     }
 
     return null;
@@ -85,21 +93,24 @@ function resolveNamespacedType(
   const interfaceDecl = namespace.getInterface(typeName);
   if (interfaceDecl) {
     const type = interfaceDecl.getType();
-    return parseTypeInfo(type);
+    const result = parseTypeInfo(type);
+    return attachDescription(result, interfaceDecl);
   }
 
   // 尝试查找 type alias
   const typeAlias = namespace.getTypeAlias(typeName);
   if (typeAlias) {
     const type = typeAlias.getType();
-    return parseTypeInfo(type);
+    const result = parseTypeInfo(type);
+    return attachDescription(result, typeAlias);
   }
 
   // 尝试查找 enum
   const enumDecl = namespace.getEnum(typeName);
   if (enumDecl) {
     const type = enumDecl.getType();
-    return parseTypeInfo(type);
+    const result = parseTypeInfo(type);
+    return attachDescription(result, enumDecl);
   }
 
   // 如果还有更深的嵌套（如 API.User.Info），递归处理
@@ -115,6 +126,65 @@ function resolveNamespacedType(
 }
 
 /**
+ * 判断变量声明是否为 as const 对象
+ * 匹配 `export const X = { ... } as const` 模式
+ */
+function isAsConstObjectDeclaration(
+  variableDecl: VariableDeclaration,
+): boolean {
+  const initializer = variableDecl.getInitializer();
+  if (!initializer) {
+    return false;
+  }
+
+  if (Node.isAsExpression(initializer)) {
+    const typeNode = initializer.getTypeNode();
+    if (typeNode?.getText() === 'const') {
+      const innerExpr = initializer.getExpression();
+      return Node.isObjectLiteralExpression(innerExpr);
+    }
+  }
+
+  return false;
+}
+
+/**
+ * 从变量声明获取 JSDoc 所在的 VariableStatement 节点
+ * JSDoc 注释挂在 VariableStatement 上，而非 VariableDeclaration
+ */
+function getVariableStatementNode(
+  variableDecl: VariableDeclaration,
+): Node | undefined {
+  const parent = variableDecl.getParent();
+  const grandparent = parent?.getParent();
+  if (grandparent && Node.isVariableStatement(grandparent)) {
+    return grandparent;
+  }
+  return undefined;
+}
+
+/**
+ * 将声明上的 JSDoc 描述附加到解析结果
+ * 对 $ref 和 FullTypeInfo 两种情况均可安全附加
+ */
+function attachDescription(
+  result: TypeInfo,
+  declaration: Node | undefined,
+): TypeInfo {
+  const description = extractDescription(declaration);
+  if (!description) {
+    return result;
+  }
+
+  const descriptionLinks = resolveDescriptionLinks(description, declaration);
+  return {
+    ...result,
+    description,
+    ...(descriptionLinks ? { descriptionLinks } : {}),
+  };
+}
+
+/**
  * 解析简单类型（非命名空间）
  */
 function resolveSimpleType(
@@ -125,21 +195,34 @@ function resolveSimpleType(
   const interfaceDecl = sourceFile.getInterface(typeName);
   if (interfaceDecl) {
     const type = interfaceDecl.getType();
-    return parseTypeInfo(type);
+    const result = parseTypeInfo(type);
+    return attachDescription(result, interfaceDecl);
+  }
+
+  // 尝试查找 as const 变量声明（优先于 type alias）
+  // 当 const X = {...} as const 和 type X = ... 同名时，优先使用 const 对象形式
+  const variableDecl = sourceFile.getVariableDeclaration(typeName);
+  if (variableDecl && isAsConstObjectDeclaration(variableDecl)) {
+    const type = variableDecl.getType();
+    const result = parseTypeInfo(type);
+    const statementNode = getVariableStatementNode(variableDecl);
+    return attachDescription(result, statementNode);
   }
 
   // 尝试查找 type alias
   const typeAlias = sourceFile.getTypeAlias(typeName);
   if (typeAlias) {
     const type = typeAlias.getType();
-    return parseTypeInfo(type);
+    const result = parseTypeInfo(type);
+    return attachDescription(result, typeAlias);
   }
 
   // 尝试查找 enum
   const enumDecl = sourceFile.getEnum(typeName);
   if (enumDecl) {
     const type = enumDecl.getType();
-    return parseTypeInfo(type);
+    const result = parseTypeInfo(type);
+    return attachDescription(result, enumDecl);
   }
 
   return null;

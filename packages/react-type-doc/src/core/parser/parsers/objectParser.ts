@@ -13,12 +13,18 @@ import {
   SYMBOL_PROPERTY_PREFIX,
 } from '../utils/helpers';
 import {
+  INDEX_SIGNATURE_STRING_KEY,
+  INDEX_SIGNATURE_NUMBER_KEY,
+} from '../../../shared/constants';
+import {
   extractDescription,
+  resolveDescriptionLinks,
   extractSourceLocation,
   extractSymbolSourceLocation,
   getPropertyTypeFromParent,
   containsGenericTypeParameter,
   getMappedTypeValueType,
+  buildGenericDisplayName,
 } from '../utils/extractors';
 import { isTypeScriptUtilityType } from '../detectors/externalDetector';
 import { containsUndefined, simplifyOptionalUnion } from './unionParser';
@@ -80,6 +86,7 @@ function parseObjectProperties(
     }
 
     const description = extractDescription(declaration);
+    const descriptionLinks = resolveDescriptionLinks(description, declaration);
     const required = !isOptional;
 
     // 构建属性信息，使用默认值策略减少冗余字段：
@@ -88,11 +95,26 @@ function parseObjectProperties(
     properties[propName] = {
       ...parsedPropType,
       ...(description ? { description } : {}),
+      ...(descriptionLinks ? { descriptionLinks } : {}),
       ...(required ? { required } : {}),
       ...(config.enableSourceLocation
         ? extractSourceLocation(declaration)
         : {}),
     };
+  }
+
+  // 解析索引签名（如 [key: string]: T、[index: number]: V）
+  // 索引签名是类型定义的固有部分，标记为 required
+  const stringIndexType = type.getStringIndexType();
+  if (stringIndexType) {
+    const parsed = recurse(stringIndexType, visited, depth + 1);
+    properties[INDEX_SIGNATURE_STRING_KEY] = { ...parsed, required: true };
+  }
+
+  const numberIndexType = type.getNumberIndexType();
+  if (numberIndexType) {
+    const parsed = recurse(numberIndexType, visited, depth + 1);
+    properties[INDEX_SIGNATURE_NUMBER_KEY] = { ...parsed, required: true };
   }
 
   return properties;
@@ -143,8 +165,15 @@ export function parseObjectType(
   const isUtilityWithGeneric =
     hasGenericParam && isTypeScriptUtilityType(typeText);
 
+  // 对含泛型参数的类型，尝试构建包含默认值的完整显示名称
+  // 例如：Dictionary<T> → Dictionary<T = unknown>
+  const genericDisplayName = hasGenericParam
+    ? buildGenericDisplayName(type)
+    : null;
+  const finalDisplayName = genericDisplayName ?? displayName;
+
   return {
-    ...buildNameField(displayName, typeText),
+    ...buildNameField(finalDisplayName, typeText),
     kind: 'object' as TypeCategory,
     text: typeText,
     ...(hasProperties && !isUtilityWithGeneric ? { properties } : {}),

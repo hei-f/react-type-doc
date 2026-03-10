@@ -20,7 +20,11 @@ import {
   CodeLine,
   Comment,
   EmptyState,
+  GenericParams,
   Indent,
+  JsDocLink,
+  JsDocTag,
+  JsDocTypeRef,
   Keyword,
   OptionalMark,
   PanelHeader,
@@ -68,6 +72,35 @@ interface TypeRenderContext {
     fieldName?: string,
   ) => void;
   reader: PropsDocReader;
+}
+
+/**
+ * 将类型名拆分为基础名和泛型参数部分，分别用不同样式渲染。
+ * 例如 "Dictionary<T = unknown>" → TypeName("Dictionary") + GenericParams("<T = unknown>")
+ */
+function renderTypeNameWithGenerics(name: string): React.ReactNode {
+  const angleIdx = name.indexOf('<');
+  if (angleIdx === -1) {
+    return <TypeName>{` ${name} `}</TypeName>;
+  }
+
+  const baseName = name.slice(0, angleIdx);
+  const genericPart = name.slice(angleIdx);
+  return (
+    <>
+      <TypeName>{` ${baseName}`}</TypeName>
+      <GenericParams>{`${genericPart} `}</GenericParams>
+    </>
+  );
+}
+
+/**
+ * 从类型名中提取不含泛型参数的基础名。
+ * 例如 "Dictionary<T = unknown>" → "Dictionary"
+ */
+function getBaseName(name: string): string {
+  const angleIdx = name.indexOf('<');
+  return angleIdx === -1 ? name : name.slice(0, angleIdx);
 }
 
 /**
@@ -281,6 +314,198 @@ function renderTypeText(
 }
 
 /**
+ * 匹配 {@link content} 内联标签和裸 URL
+ * 捕获组1: {@link} 内容，捕获组2: 裸 URL
+ */
+const INLINE_LINK_PATTERN = /\{@link\s+([^}]+)\}|(https?:\/\/\S+)/g;
+
+/**
+ * 在 reader 的注册数据中查找 {@link} 引用的类型
+ * 支持 TypeName 和 TypeName.property 格式
+ */
+function findTypeByLinkRef(
+  reader: PropsDocReader,
+  refText: string,
+): { typeInfo: TypeInfo; typeName: string } | null {
+  const dotIdx = refText.indexOf('.');
+  const typeName = dotIdx >= 0 ? refText.slice(0, dotIdx) : refText;
+
+  for (const key of reader.getAllKeys()) {
+    const raw = reader.getRaw(key);
+    if (!raw) continue;
+    const resolved = reader.resolveRef(raw);
+    if (resolved.text === typeName || resolved.name === typeName) {
+      return { typeInfo: raw, typeName };
+    }
+  }
+
+  const registry = reader.getTypeRegistry();
+  const registryKey = `text:${typeName}`;
+  if (registryKey in registry) {
+    return { typeInfo: registry[registryKey], typeName };
+  }
+
+  return null;
+}
+
+/**
+ * 使用预解析的 descriptionLinks 查找 {@link} 引用的类型
+ * 优先通过解析阶段 ts-morph 预计算的 registry key 直接查找（O(1)）
+ * 找不到时回退到运行时遍历搜索
+ */
+function resolveTypeLink(
+  target: string,
+  reader: PropsDocReader,
+  descriptionLinks?: Record<string, string>,
+): { typeInfo: TypeInfo; typeName: string } | null {
+  if (descriptionLinks && target in descriptionLinks) {
+    const registryKey = descriptionLinks[target];
+    const registry = reader.getTypeRegistry();
+    if (registryKey in registry) {
+      const dotIdx = target.indexOf('.');
+      const baseName = dotIdx >= 0 ? target.slice(0, dotIdx) : target;
+      return { typeInfo: registry[registryKey], typeName: baseName };
+    }
+  }
+
+  return findTypeByLinkRef(reader, target);
+}
+
+/**
+ * 解析描述行中的 @tag 标签和 {@link} 链接，返回带样式的 React 节点
+ */
+function parseDescriptionLine(
+  line: string,
+  context?: TypeRenderContext,
+  descriptionLinks?: Record<string, string>,
+): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  let remaining = line;
+  let keyIdx = 0;
+
+  const blockTagMatch = remaining.match(/^(@\w+)/);
+  if (blockTagMatch) {
+    parts.push(<JsDocTag key={`tag-${keyIdx++}`}>{blockTagMatch[1]}</JsDocTag>);
+    remaining = remaining.slice(blockTagMatch[1].length);
+  }
+
+  const regex = new RegExp(INLINE_LINK_PATTERN.source, 'g');
+  let lastIdx = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(remaining)) !== null) {
+    if (match.index > lastIdx) {
+      parts.push(remaining.slice(lastIdx, match.index));
+    }
+
+    if (match[1] !== undefined) {
+      const linkContent = match[1].trim();
+      const pipeIdx = linkContent.indexOf('|');
+      const target =
+        pipeIdx >= 0 ? linkContent.slice(0, pipeIdx).trim() : linkContent;
+      const display =
+        pipeIdx >= 0 ? linkContent.slice(pipeIdx + 1).trim() : linkContent;
+      const isUrl = /^https?:\/\//.test(target);
+
+      if (isUrl) {
+        parts.push(
+          <JsDocLink
+            key={`link-${keyIdx++}`}
+            href={target}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {display}
+          </JsDocLink>,
+        );
+      } else if (context) {
+        const found = resolveTypeLink(target, context.reader, descriptionLinks);
+        if (found) {
+          parts.push(
+            <ClickableTypeName
+              key={`ref-${keyIdx++}`}
+              onClick={() =>
+                context.onTypeClick(found.typeInfo, found.typeName)
+              }
+              title={`点击查看 ${found.typeName}`}
+            >
+              {display}
+            </ClickableTypeName>,
+          );
+        } else {
+          parts.push(
+            <JsDocTypeRef key={`ref-${keyIdx++}`}>{display}</JsDocTypeRef>,
+          );
+        }
+      } else {
+        parts.push(
+          <JsDocTypeRef key={`ref-${keyIdx++}`}>{display}</JsDocTypeRef>,
+        );
+      }
+    } else if (match[2]) {
+      parts.push(
+        <JsDocLink
+          key={`url-${keyIdx++}`}
+          href={match[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {match[2]}
+        </JsDocLink>,
+      );
+    }
+
+    lastIdx = match.index + match[0].length;
+  }
+
+  if (lastIdx < remaining.length) {
+    parts.push(remaining.slice(lastIdx));
+  }
+
+  return <>{parts}</>;
+}
+
+/**
+ * 渲染 JSDoc 描述（支持多行，含 @param、@default 等标签和 {@link} 链接）
+ */
+function renderDescription(
+  description: string,
+  indentLevel: number,
+  context?: TypeRenderContext,
+  descriptionLinks?: Record<string, string>,
+): React.ReactNode {
+  if (!description.includes('\n')) {
+    return (
+      <Comment>
+        {'/** '}
+        {parseDescriptionLine(description, context, descriptionLinks)}
+        {' */'}
+      </Comment>
+    );
+  }
+
+  const lines = description.split('\n');
+  return (
+    <>
+      <Comment>{'/**'}</Comment>
+      {lines.map((line, i) => (
+        <React.Fragment key={i}>
+          <br />
+          <Indent $level={indentLevel} />
+          <Comment>
+            {' * '}
+            {parseDescriptionLine(line, context, descriptionLinks)}
+          </Comment>
+        </React.Fragment>
+      ))}
+      <br />
+      <Indent $level={indentLevel} />
+      <Comment>{' */'}</Comment>
+    </>
+  );
+}
+
+/**
  * 渲染联合类型视图
  */
 function renderUnionTypeView(
@@ -294,6 +519,16 @@ function renderUnionTypeView(
   return (
     <CodeContainer>
       <CodeContent>
+        {resolved.description && (
+          <CodeLine>
+            {renderDescription(
+              resolved.description,
+              0,
+              context,
+              resolved.descriptionLinks,
+            )}
+          </CodeLine>
+        )}
         <CodeLine>
           <Keyword>type</Keyword>
           <TypeName> {typeName} </TypeName>
@@ -357,7 +592,12 @@ function renderPropertyLine(
       <Indent $level={indentLevel} />
       {hasDescription && (
         <>
-          <Comment>{`/** ${resolved.description} */`}</Comment>
+          {renderDescription(
+            resolved.description!,
+            indentLevel,
+            context,
+            resolved.descriptionLinks,
+          )}
           <br />
           <Indent $level={indentLevel} />
         </>
@@ -468,6 +708,14 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
 
   const resolved = reader.resolveRef(typeInfo);
 
+  /** 包含泛型参数的完整类型名（用于代码块的 interface 声明） */
+  const rootDisplayName = reader.getDisplayName(resolved, typeKey);
+
+  /** 使用实际类型名构建显示标题（不含 registry key 中的路径前缀） */
+  const rootDisplayTitle = titlePrefix
+    ? `${titlePrefix} - ${rootDisplayName}`
+    : rootDisplayName;
+
   const context: TypeRenderContext = {
     onTypeClick: handleTypeClick,
     reader,
@@ -478,9 +726,9 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
     return (
       <TypeDocPanelContainer>
         <PanelHeader>
-          <PanelTitle>{rootTitle}</PanelTitle>
+          <PanelTitle>{rootDisplayTitle}</PanelTitle>
         </PanelHeader>
-        {renderUnionTypeView(typeKey, typeInfo, context)}
+        {renderUnionTypeView(rootDisplayName, typeInfo, context)}
       </TypeDocPanelContainer>
     );
   }
@@ -489,8 +737,7 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
   const resolvedCurrentType = currentTypeInfo
     ? reader.resolveRef(currentTypeInfo)
     : null;
-  const isNestedUnion =
-    isInNestedView && resolvedCurrentType?.kind === 'union';
+  const isNestedUnion = isInNestedView && resolvedCurrentType?.kind === 'union';
 
   const propEntries = reader.getPropertyEntries(
     isInNestedView ? currentTypeInfo! : typeInfo,
@@ -500,7 +747,7 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
     return (
       <TypeDocPanelContainer>
         <PanelHeader>
-          <PanelTitle>{rootTitle} — 0 properties</PanelTitle>
+          <PanelTitle>{rootDisplayTitle} — 0 properties</PanelTitle>
         </PanelHeader>
         <EmptyState>该类型没有属性定义</EmptyState>
       </TypeDocPanelContainer>
@@ -521,9 +768,9 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
         <PanelTitle>
           {isInNestedView
             ? isNestedUnion
-              ? displayTypeName
-              : `${displayTypeName} — ${currentPropEntries.length} properties`
-            : `${rootTitle} — ${propEntries.length} properties`}
+              ? getBaseName(displayTypeName)
+              : `${getBaseName(displayTypeName)} — ${currentPropEntries.length} properties`
+            : `${rootDisplayTitle} — ${propEntries.length} properties`}
         </PanelTitle>
       </PanelHeader>
 
@@ -531,7 +778,7 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
       <BreadcrumbWrapper $visible={isInNestedView}>
         <BreadcrumbContainer>
           <BreadcrumbItem $clickable onClick={() => navigateToLevel(-1)}>
-            {rootTitle}
+            {rootDisplayTitle}
           </BreadcrumbItem>
           {historyStack.map((item, index) => (
             <React.Fragment key={index}>
@@ -555,22 +802,19 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
         <CodeContent>
           {isInNestedView ? (
             isNestedUnion ? (
-              renderUnionTypeView(
-                displayTypeName,
-                currentTypeInfo!,
-                context,
-              )
+              renderUnionTypeView(displayTypeName, currentTypeInfo!, context)
             ) : (
               <>
                 <CodeLine>
                   <Keyword>interface</Keyword>
-                  <TypeName> {displayTypeName} </TypeName>
+                  {renderTypeNameWithGenerics(displayTypeName)}
                   <Punctuation>{'{'}</Punctuation>
                 </CodeLine>
 
                 {currentPropEntries.length > 0 ? (
-                  currentPropEntries.map(([propName, propInfo]: [string, TypeInfo]) =>
-                    renderPropertyLine(propName, propInfo, context),
+                  currentPropEntries.map(
+                    ([propName, propInfo]: [string, TypeInfo]) =>
+                      renderPropertyLine(propName, propInfo, context),
                   )
                 ) : (
                   <CodeLine>
@@ -587,9 +831,19 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
           ) : (
             // 根类型视图
             <>
+              {resolved.description && (
+                <CodeLine>
+                  {renderDescription(
+                    resolved.description,
+                    0,
+                    context,
+                    resolved.descriptionLinks,
+                  )}
+                </CodeLine>
+              )}
               <CodeLine>
                 <Keyword>interface</Keyword>
-                <TypeName> {typeKey} </TypeName>
+                {renderTypeNameWithGenerics(rootDisplayName)}
                 <Punctuation>{'{'}</Punctuation>
               </CodeLine>
 

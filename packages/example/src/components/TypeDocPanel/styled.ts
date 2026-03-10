@@ -16,6 +16,9 @@ const THEME = {
   link: '#dcdcaa',
   linkHover: '#ffcc00',
   optional: '#ffffff',
+  generic: '#dfc184',
+  jsDocTag: '#BB7CD7',
+  jsDocLink: '#3794ff',
 };
 
 /** 类型文档面板容器 */
@@ -109,6 +112,11 @@ export const Keyword = styled.span`
 /** 类型名 (string, number, boolean) */
 export const TypeName = styled.span`
   color: ${THEME.type};
+`;
+
+/** 泛型参数部分 (如 <T = unknown>) */
+export const GenericParams = styled.span`
+  color: ${THEME.generic};
 `;
 
 /** 属性名 */
@@ -242,6 +250,30 @@ export const BreadcrumbSeparator = styled.span`
   color: #666;
   margin: 0 4px;
   flex-shrink: 0;
+`;
+
+/** JSDoc 标签名（@param, @default, @returns 等） */
+export const JsDocTag = styled.span`
+  color: ${THEME.jsDocTag};
+  font-style: normal;
+`;
+
+/** JSDoc 内联链接（URL） */
+export const JsDocLink = styled.a`
+  color: ${THEME.jsDocLink};
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: ${THEME.linkHover};
+  }
+`;
+
+/** JSDoc 类型引用（{@link TypeName}） */
+export const JsDocTypeRef = styled.span`
+  color: ${THEME.type};
+  font-style: normal;
 `;
 
 /** 源码位置 */

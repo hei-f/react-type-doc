@@ -20,6 +20,7 @@ import type {
   RegistryItem,
   TypeInfo,
 } from '../shared/types';
+import { expandScanDirs } from './scanDir';
 
 /** 单个类型的解析结果 */
 interface ParseResult {
@@ -246,8 +247,17 @@ export async function runGenerate(): Promise<void> {
       `📝 已加载 tsconfig 中的 ${project.getSourceFiles().length} 个文件\n`,
     );
 
-    // 获取注册表中的所有项
-    const registryEntries = Object.entries(config.registry);
+    // 展开 scanDirs 配置并与手动 registry 合并（手动 registry 优先）
+    const manualRegistry = config.registry ?? {};
+    let mergedRegistry: Record<string, RegistryItem> = { ...manualRegistry };
+
+    if (config.scanDirs && config.scanDirs.length > 0) {
+      const scanResult = expandScanDirs(config.scanDirs, project, pathResolver);
+      mergedRegistry = { ...scanResult, ...manualRegistry };
+      console.log('');
+    }
+
+    const registryEntries = Object.entries(mergedRegistry);
     console.log(`📋 注册表中有 ${registryEntries.length} 个类型需要解析\n`);
 
     // 清空全局类型缓存，准备解析

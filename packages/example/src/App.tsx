@@ -78,6 +78,18 @@ const TYPE_GROUPS = [
     group: '外部类型',
     types: [{ key: 'ReactComponentProps', label: 'React 类型引用' }],
   },
+  {
+    group: '注释风格测试（scanDirs）',
+    types: [
+      { key: 'CommentStyles', label: '注释风格组件 Props' },
+      { key: 'CommentStyles/SingleLineDocInterface', label: '单行 JSDoc 接口' },
+      { key: 'CommentStyles/MultiLineDocInterface', label: '多行 JSDoc 接口' },
+      { key: 'CommentStyles/AliasWithDoc', label: 'type alias 注释' },
+      { key: 'CommentStyles/DocumentedUnion', label: '联合类型注释' },
+      { key: 'CommentStyles/Permission', label: 'const 对象类型注释' },
+      { key: 'CommentStyles/ComplexCommentProps', label: '复杂属性注释' },
+    ],
+  },
 ];
 
 type ViewMode = 'viewer' | 'comparison';

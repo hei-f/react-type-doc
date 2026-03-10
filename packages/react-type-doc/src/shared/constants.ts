@@ -106,6 +106,29 @@ export const DEFAULT_SKIP_DEEP_PARSE_TYPES = new Set([
 ]);
 
 /**
+ * 索引签名的属性键名
+ *
+ * 用于将 TypeScript 索引签名表示为 properties 中的特殊条目。
+ * 使用 TypeScript 标准语法作为键名，不会与合法的属性名冲突。
+ *
+ * @example
+ * interface Dictionary<T> { [key: string]: T }  → 属性键为 "[key: string]"
+ * interface NumberMap { [index: number]: string } → 属性键为 "[index: number]"
+ */
+export const INDEX_SIGNATURE_STRING_KEY = '[key: string]';
+export const INDEX_SIGNATURE_NUMBER_KEY = '[index: number]';
+
+// ============================================================
+// scanDirs 目录扫描约定文件名
+// ============================================================
+
+/** scanDirs 模式下的默认组件入口文件名 */
+export const DEFAULT_SCAN_DIR_COMPONENT_ENTRY = 'index.tsx';
+
+/** scanDirs 模式下的默认类型定义文件名 */
+export const DEFAULT_SCAN_DIR_TYPES_ENTRY = 'doc.types.ts';
+
+/**
  * 默认解析配置
  *
  * 提供合理的默认值，确保在没有用户配置时也能正常工作

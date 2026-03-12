@@ -325,36 +325,6 @@ function TypeDocViewer({ typeName }: { typeName: string }) {
 
 ---
 
-## 📖 使用场景
-
-### ✅ 最适合的场景
-
-1. **自建组件文档系统**
-   ```typescript
-   // 在你的文档应用中动态展示组件 Props
-   <ComponentDoc name="Button" data={typeData} />
-   ```
-
-2. **API 文档生成**
-   ```typescript
-   // 展示 API 请求/响应的类型定义
-   <APIDoc endpoint="/api/users" types={typeData} />
-   ```
-
-3. **类型安全的表单生成**
-   ```typescript
-   // 根据类型定义自动生成表单
-   <DynamicForm schema={reader.resolve('UserCreateDTO')} />
-   ```
-
-4. **GraphQL Schema 文档**
-   ```typescript
-   // 展示 GraphQL 类型定义
-   <GraphQLTypeDocs types={typeData} />
-   ```
-
----
-
 ## 🔧 高级配置
 
 ### 解析选项

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-03-12
+
+### Changed
+
+- 校对精简 README，移除冗余段落和无效占位链接
+- 补充内置 UI 组件（`react-type-doc/ui`）使用文档
+- 修复 `getPropertyEntries` 示例中多余的 `Object.entries` 包裹
+
 ## [1.0.0] - 2026-03-12
 
 ### Added
@@ -21,4 +29,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 索引签名、元组、重载函数签名等高级类型支持
 - ESM / CommonJS 双格式输出
 
+[1.0.1]: https://github.com/hei-f/react-type-doc/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/hei-f/react-type-doc/releases/tag/v1.0.0

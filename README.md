@@ -563,9 +563,9 @@ MIT © [Your Name]
 
 ## 🔗 相关链接
 
-- [GitHub Repository](https://github.com/yourusername/react-type-doc)
+- [GitHub Repository](https://github.com/hei-f/react-type-doc)
 - [NPM Package](https://www.npmjs.com/package/react-type-doc)
-- [Issue Tracker](https://github.com/yourusername/react-type-doc/issues)
+- [Issue Tracker](https://github.com/hei-f/react-type-doc/issues)
 - [在线演示](https://your-demo-site.com)
 
 ---

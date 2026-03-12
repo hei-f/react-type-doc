@@ -40,3 +40,8 @@ Thumbs.db
 .cache/
 
 
+.cursor/*
+!.cursor/commands/
+.cursor/commands/*
+!.cursor/commands/publish-npm.md
+DETAILED_COMPARISON.md

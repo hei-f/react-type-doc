@@ -188,6 +188,13 @@ function parseTypeInfoRecursive(
 
   // 9. 循环引用检查（基于路径追踪，仅检测真正的嵌套循环）
   if (visited.has(typeId)) {
+    // 有缓存 key 的类型：使用 $ref 前向引用
+    // 虽然类型此刻可能尚未完成解析，但解析完毕后会被写入缓存（步骤 13）
+    // 运行时从 typeRegistry 中解析此引用，从而支持递归类型的导航
+    if (cacheKey) {
+      return { $ref: cacheKey };
+    }
+
     const symbol = type.getSymbol() || type.getAliasSymbol();
     const symbolLocation = config.enableSourceLocation
       ? extractSymbolSourceLocation(symbol)
@@ -202,7 +209,12 @@ function parseTypeInfoRecursive(
 
   // 10. 执行解析（未命中缓存且非循环引用时）
   const newVisited = new Set(visited);
-  newVisited.add(typeId);
+  // 数组类型不加入 visited 路径：
+  // 数组是透明的容器类型，其元素类型会自行处理循环引用检测
+  // 这确保递归数组类型（如 DocumentNode[]）保留完整的数组结构
+  if (!type.isArray()) {
+    newVisited.add(typeId);
+  }
 
   const kind = getTypeKind(type);
 

@@ -15,6 +15,20 @@ export default defineConfig([
     splitting: false,
     treeshake: true,
   },
+  // UI 组件入口（peerDependencies 需要 external）
+  {
+    entry: {
+      'ui-entry': 'src/ui-entry.ts',
+    },
+    format: ['cjs', 'esm'],
+    dts: true,
+    clean: false,
+    shims: true,
+    sourcemap: true,
+    splitting: false,
+    treeshake: true,
+    external: ['react', 'react-dom', 'styled-components'],
+  },
   // CLI 入口（单独配置，需要 shebang）
   {
     entry: {

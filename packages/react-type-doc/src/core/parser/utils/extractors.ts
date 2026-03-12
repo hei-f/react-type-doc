@@ -9,7 +9,10 @@ import type {
   Type,
   JSDocableNode,
   ParameterDeclaration,
+  SourceFile,
 } from 'ts-morph';
+import { getCacheKey } from '../cache';
+import { cleanTypeText } from './helpers';
 
 // ============================================================
 // 类型保护
@@ -27,7 +30,33 @@ function isJSDocableNode(node: Node): node is Node & JSDocableNode {
 // ============================================================
 
 /**
+ * 从 JSDoc 标签节点提取完整的标签文本
+ * 处理 @param、@returns、@default 等标签的格式化输出
+ */
+function formatJSDocTag(tag: {
+  getTagName: () => string;
+  getText: () => string;
+}): string {
+  const tagName = tag.getTagName();
+  const rawText = tag.getText();
+
+  // 清理 JSDoc 续行标记（ * 前缀），保留原始换行（对 @example 等标签至关重要）
+  const cleaned = rawText
+    .split('\n')
+    .map((line) => line.replace(/^\s*\*\s?/, ''))
+    .join('\n')
+    .trim();
+
+  if (cleaned) {
+    return cleaned;
+  }
+
+  return `@${tagName}`;
+}
+
+/**
  * 从声明节点提取 JSDoc 描述（纯函数）
+ * 包含完整的 JSDoc 标签信息（@param、@returns、@default 等）
  */
 export function extractDescription(declaration: Node | undefined): string {
   if (!declaration) {
@@ -38,11 +67,35 @@ export function extractDescription(declaration: Node | undefined): string {
   if (isJSDocableNode(declaration)) {
     const jsDocs = declaration.getJsDocs();
     if (jsDocs.length > 0) {
-      const firstDoc = jsDocs[0];
-      if (firstDoc) {
-        const desc = firstDoc.getDescription().trim();
+      // 使用最后一个 JSDoc（最接近声明的注释）
+      // 避免文件级 JSDoc 被错误关联到首个声明
+      const lastDoc = jsDocs[jsDocs.length - 1];
+      if (lastDoc) {
+        const desc = lastDoc.getDescription().trim();
+        const tags = lastDoc.getTags();
+
+        const parts: string[] = [];
         if (desc) {
-          return desc;
+          parts.push(desc);
+        }
+
+        for (const tag of tags) {
+          const tagName = tag.getTagName();
+          // @description 内容合并到主描述中
+          if (tagName === 'description') {
+            const tagText = formatJSDocTag(tag);
+            const descContent = tagText.replace(/^@description\s*/, '').trim();
+            if (descContent) {
+              parts.push(descContent);
+            }
+          } else {
+            parts.push(formatJSDocTag(tag));
+          }
+        }
+
+        const result = parts.join('\n');
+        if (result) {
+          return result;
         }
       }
     }
@@ -60,7 +113,8 @@ export function extractDescription(declaration: Node | undefined): string {
   }
 
   const commentText = lastComment.getText();
-  const match = commentText.match(/\/\*\*?\s*([\s\S]*?)\s*\*\//);
+  // 仅匹配 JSDoc 注释（/** ... */），不匹配普通块注释（/* ... */）
+  const match = commentText.match(/\/\*\*\s*([\s\S]*?)\s*\*\//);
   const extracted = match?.[1]?.replace(/^\s*\*\s*/gm, '').trim();
   return extracted || '';
 }
@@ -235,6 +289,175 @@ export function containsGenericTypeParameter(
   }
 
   return false;
+}
+
+/**
+ * 从声明中提取完整的泛型签名（含默认值和约束）
+ *
+ * ts-morph 的 type.getText() 只返回类型参数名（如 Dictionary<T>），
+ * 不包含默认值（= unknown）和约束（extends object）。
+ * 此函数从声明节点提取完整签名，用于 UI 展示。
+ *
+ * @param type 要提取泛型签名的类型
+ * @returns 完整的泛型显示名称（如 Dictionary<T = unknown>），无泛型参数时返回 null
+ */
+export function buildGenericDisplayName(type: Type): string | null {
+  const symbol = type.getSymbol() || type.getAliasSymbol();
+  if (!symbol) return null;
+
+  const declarations = symbol.getDeclarations();
+  if (!declarations || declarations.length === 0) return null;
+
+  const decl = declarations[0];
+  if (!decl || !('getTypeParameters' in decl)) return null;
+
+  type TypeParamDecl = {
+    getName: () => string;
+    getDefault?: () => { getText: () => string } | undefined;
+    getConstraint?: () => { getText: () => string } | undefined;
+  };
+
+  const getTypeParams = (decl as Record<string, unknown>).getTypeParameters as
+    | (() => TypeParamDecl[])
+    | undefined;
+  if (typeof getTypeParams !== 'function') return null;
+
+  const typeParams = getTypeParams.call(decl) as TypeParamDecl[];
+  if (!typeParams || typeParams.length === 0) return null;
+
+  const hasAnyDefault = typeParams.some(
+    (param) => param.getDefault?.() != null,
+  );
+  if (!hasAnyDefault) return null;
+
+  const paramStrings = typeParams.map((param) => {
+    const name = param.getName();
+    const constraint = param.getConstraint?.();
+    const defaultType = param.getDefault?.();
+
+    let str = name;
+    if (constraint) {
+      str += ` extends ${constraint.getText()}`;
+    }
+    if (defaultType) {
+      str += ` = ${defaultType.getText()}`;
+    }
+    return str;
+  });
+
+  return `${symbol.getName()}<${paramStrings.join(', ')}>`;
+}
+
+// ============================================================
+// 映射类型检测
+// ============================================================
+
+// ============================================================
+// {@link} 引用解析
+// ============================================================
+
+/** 匹配 JSDoc 描述中的 {@link content} 内联标签 */
+const JSDOC_LINK_PATTERN = /\{@link\s+([^}]+)\}/g;
+
+/**
+ * 在源文件中查找本地类型定义（interface、type alias、enum）
+ */
+function findLocalType(sourceFile: SourceFile, typeName: string): Type | null {
+  const iface = sourceFile.getInterface(typeName);
+  if (iface) return iface.getType();
+
+  const typeAlias = sourceFile.getTypeAlias(typeName);
+  if (typeAlias) return typeAlias.getType();
+
+  const enumDecl = sourceFile.getEnum(typeName);
+  if (enumDecl) return enumDecl.getType();
+
+  return null;
+}
+
+/**
+ * 通过 import 声明查找导入的类型
+ * 跟随 import 路径到源模块，与 IDE 使用相同的模块解析机制
+ */
+function findImportedType(
+  sourceFile: SourceFile,
+  typeName: string,
+): Type | null {
+  for (const importDecl of sourceFile.getImportDeclarations()) {
+    const namedImport = importDecl
+      .getNamedImports()
+      .find((n) => n.getName() === typeName);
+    if (!namedImport) continue;
+
+    const moduleFile = importDecl.getModuleSpecifierSourceFile();
+    if (!moduleFile) continue;
+
+    const localType = findLocalType(moduleFile, typeName);
+    if (localType) return localType;
+
+    try {
+      const exportedDecls = moduleFile.getExportedDeclarations();
+      const decls = exportedDecls.get(typeName);
+      if (decls && decls.length > 0 && decls[0]) {
+        return decls[0].getType();
+      }
+    } catch {
+      console.warn(`[react-type-doc] 解析导入类型 ${typeName} 时出错`);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * 解析描述文本中 {@link} 引用的类型
+ * 使用 ts-morph 的类型系统解析，与 IDE 使用相同的作用域解析机制：
+ * 1. 先查找源文件本地定义（interface、type alias、enum）
+ * 2. 再查找 import 导入的类型（跟随模块路径解析）
+ *
+ * @param description 已提取的 JSDoc 描述文本
+ * @param declaration 描述所在的声明节点（用于获取源文件作用域）
+ * @returns 引用文本到 typeRegistry key 的映射，无链接时返回 undefined
+ */
+export function resolveDescriptionLinks(
+  description: string,
+  declaration: Node | undefined,
+): Record<string, string> | undefined {
+  if (!description || !declaration) return undefined;
+  if (!description.includes('{@link')) return undefined;
+
+  const sourceFile = declaration.getSourceFile();
+  const links: Record<string, string> = {};
+  const regex = new RegExp(JSDOC_LINK_PATTERN.source, 'g');
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(description)) !== null) {
+    const rawRef = match[1]?.trim();
+    if (!rawRef) continue;
+
+    const pipeIdx = rawRef.indexOf('|');
+    const target = pipeIdx >= 0 ? rawRef.slice(0, pipeIdx).trim() : rawRef;
+
+    if (/^https?:\/\//.test(target)) continue;
+
+    const dotIdx = target.indexOf('.');
+    const typeName = dotIdx >= 0 ? target.slice(0, dotIdx) : target;
+
+    let tsType = findLocalType(sourceFile, typeName);
+    if (!tsType) {
+      tsType = findImportedType(sourceFile, typeName);
+    }
+    if (!tsType) continue;
+
+    const typeText = cleanTypeText(tsType.getText());
+    const cacheKey = getCacheKey(tsType, typeText);
+
+    if (cacheKey) {
+      links[target] = cacheKey;
+    }
+  }
+
+  return Object.keys(links).length > 0 ? links : undefined;
 }
 
 // ============================================================

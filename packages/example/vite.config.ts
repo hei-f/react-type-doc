@@ -10,6 +10,7 @@ export default defineConfig({
   resolve: {
     alias: {
       'react-type-doc/runtime': path.join(reactTypeDocSrc, 'runtime-entry.ts'),
+      'react-type-doc/ui': path.join(reactTypeDocSrc, 'ui-entry.ts'),
       'react-type-doc': path.join(reactTypeDocSrc, 'index.ts'),
     },
   },

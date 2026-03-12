@@ -89,10 +89,17 @@ export class PropsDocReader {
 
     const resolved = this.data.typeRegistry[typeInfo.$ref];
     if (resolved && !isTypeRef(resolved)) {
+      // descriptionLinks 跟随 description 的来源：
+      // 使用 ref 的 description 时取 ref 的 links，否则取 resolved 的
+      const useRefDesc = typeInfo.description !== undefined;
+      const descLinks = useRefDesc
+        ? typeInfo.descriptionLinks
+        : resolved.descriptionLinks;
       return {
         ...resolved,
         description: typeInfo.description ?? resolved.description ?? '',
         required: typeInfo.required ?? resolved.required ?? false,
+        ...(descLinks ? { descriptionLinks: descLinks } : {}),
       };
     }
 
@@ -101,6 +108,9 @@ export class PropsDocReader {
       text: typeInfo.$ref,
       description: typeInfo.description ?? '',
       required: typeInfo.required ?? false,
+      ...(typeInfo.descriptionLinks
+        ? { descriptionLinks: typeInfo.descriptionLinks }
+        : {}),
     };
   }
 

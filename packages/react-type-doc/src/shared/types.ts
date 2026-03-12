@@ -151,6 +151,13 @@ export interface FullTypeInfo {
    * @example Omit<T, "id"> 中的 T 未实例化，isGeneric = true
    */
   isGeneric?: boolean;
+
+  /**
+   * JSDoc 中 {@link} 引用的预解析映射
+   * 在解析阶段通过 ts-morph 的类型系统完成解析（与 IDE 使用相同的作用域解析机制）
+   * key: 引用文本（如 "ComplexCommentProps"）, value: typeRegistry 中的 key
+   */
+  descriptionLinks?: Record<string, string>;
 }
 
 /** 类型引用结构（只包含引用，完整定义从 typeRegistry 获取） */
@@ -161,6 +168,8 @@ export interface TypeRef {
   description?: string;
   /** 位置相关的必填信息 */
   required?: boolean;
+  /** JSDoc 中 {@link} 引用的预解析映射 */
+  descriptionLinks?: Record<string, string>;
 }
 
 /** 类型信息：可以是完整定义或引用 */
@@ -194,6 +203,16 @@ export interface ParseOptions {
   enableSourceLocation?: boolean;
 }
 
+/** 目录扫描配置项 */
+export interface ScanDirItem {
+  /** 扫描目录路径（支持相对路径和 tsconfig 路径别名，如 @/components） */
+  path: string;
+  /** 组件入口文件名（默认 'index.tsx'） */
+  componentEntry?: string;
+  /** 类型定义文件名（默认 'doc.types.ts'） */
+  typesEntry?: string;
+}
+
 /** 配置文件结构 */
 export interface ReactTypeDocConfig {
   /** tsconfig 路径（相对于项目根目录，支持路径别名） */
@@ -202,8 +221,15 @@ export interface ReactTypeDocConfig {
   outputPath: string;
   /** 解析选项 */
   options?: ParseOptions;
-  /** 类型注册表 */
-  registry: Record<string, RegistryItem>;
+  /** 类型注册表（手动注册） */
+  registry?: Record<string, RegistryItem>;
+  /**
+   * 目录扫描配置
+   * 自动扫描指定目录下的子文件夹，按约定提取组件和类型：
+   * - 组件：子文件夹/index.tsx
+   * - 类型：子文件夹/doc.types.ts 中导出的 type/interface/enum
+   */
+  scanDirs?: ScanDirItem[];
 }
 
 /** 输出结果结构（脚本生成） */

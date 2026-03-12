@@ -11,13 +11,13 @@
     "component",
     "docgen"
   ],
-  "homepage": "https://github.com/yourusername/react-type-doc#readme",
+  "homepage": "https://github.com/hei-f/react-type-doc#readme",
   "bugs": {
-    "url": "https://github.com/yourusername/react-type-doc/issues"
+    "url": "https://github.com/hei-f/react-type-doc/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/react-type-doc.git"
+    "url": "git+https://github.com/hei-f/react-type-doc.git"
   },
   "license": "MIT",
   "author": "",
@@ -32,13 +32,18 @@
       "types": "./dist/runtime-entry.d.ts",
       "import": "./dist/runtime-entry.js",
       "require": "./dist/runtime-entry.cjs"
+    },
+    "./ui": {
+      "types": "./dist/ui-entry.d.ts",
+      "import": "./dist/ui-entry.js",
+      "require": "./dist/ui-entry.cjs"
     }
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "react-type-doc": "./dist/cli.js"
+    "react-type-doc": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -51,13 +56,32 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "pnpm run build"
+  },
+  "peerDependencies": {
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "styled-components": "^6.2.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "styled-components": {
+      "optional": true
+    }
   },
   "dependencies": {
     "ts-morph": "^21.0.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/styled-components": "^5.1.36",
     "@vitest/coverage-v8": "^4.0.15",
     "@vitest/ui": "^4.0.15",
     "jsdom": "^27.3.0",

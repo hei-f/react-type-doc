@@ -1,5 +1,10 @@
 /**
  * react-type-doc 配置文件
+ *
+ * 演示三种配置方式：
+ * 1. registry（手动注册）：逐一指定组件或类型
+ * 2. scanDirs（目录扫描）：按约定自动扫描子文件夹
+ * 3. 两者混合使用，手动 registry 优先级高于 scanDirs
  */
 
 import { defineConfig } from 'react-type-doc';
@@ -25,29 +30,28 @@ export default defineConfig({
     ]),
   },
 
-  // 类型注册表
+  // ============================================================
+  // 方式一：手动注册（适合扁平文件结构或需要精确控制的场景）
+  // ============================================================
   registry: {
-    // 基础组件
+    // --- 组件注册（只指定 sourcePath，自动提取 Props） ---
     BasicComponent: {
       sourcePath: './src/components/BasicComponent.tsx',
     },
 
-    // 泛型组件
     GenericComponent: {
       sourcePath: './src/components/GenericComponent.tsx',
     },
 
-    // 复杂属性组件
     ComplexPropsComponent: {
       sourcePath: './src/components/ComplexPropsComponent.tsx',
     },
 
-    // 命名空间组件
     NamespacedComponent: {
       sourcePath: './src/components/NamespacedComponent.tsx',
     },
 
-    // 类型定义
+    // --- 类型注册（指定 sourcePath + typeName） ---
     PrimitiveTypes: {
       sourcePath: './src/types/basic.ts',
       typeName: 'PrimitiveTypes',
@@ -143,4 +147,17 @@ export default defineConfig({
       typeName: 'ReactComponentProps',
     },
   },
+
+  // ============================================================
+  // 方式二：目录扫描（适合文件夹式组件结构）
+  // 约定：子文件夹/index.tsx → 组件，子文件夹/doc.types.ts → 类型
+  // ============================================================
+  scanDirs: [
+    {
+      path: './src/scan-demo',
+      // 以下为默认值，可按项目约定自定义：
+      // componentEntry: 'index.tsx',
+      // typesEntry: 'doc.types.ts',
+    },
+  ],
 });

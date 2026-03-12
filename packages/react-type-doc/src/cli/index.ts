@@ -14,12 +14,16 @@ function showHelp(): void {
 📚 React 类型文档生成工具
 
 用法:
-  bun run type-doc          生成类型文档
-  bun run type-doc:init     初始化配置文件
+  npx react-type-doc              生成类型文档
+  npx react-type-doc init         初始化配置文件
+
+  # 其他包管理器
+  # pnpm exec react-type-doc
+  # bunx react-type-doc
 
 选项:
-  -h, --help               显示帮助信息
-  -v, --version            显示版本信息
+  -h, --help                      显示帮助信息
+  -v, --version                   显示版本信息
 `);
 }
 

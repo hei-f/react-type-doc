@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { loader } from '@monaco-editor/react';
 import type { OutputResult } from 'react-type-doc';
 import type { ComponentDoc } from 'react-docgen-typescript';
-import TypeDocPanel from './components/TypeDocPanel';
+import { TypeDocPanel, zhCN } from 'react-type-doc/ui';
 import ReactDocgenTsViewer from './components/ReactDocgenTsViewer';
 import ComparisonView from './components/ComparisonView';
 import reactTypeDocDataRaw from '../benchmark-output/react-type-doc.json';
@@ -77,6 +77,18 @@ const TYPE_GROUPS = [
   {
     group: '外部类型',
     types: [{ key: 'ReactComponentProps', label: 'React 类型引用' }],
+  },
+  {
+    group: '注释风格测试（scanDirs）',
+    types: [
+      { key: 'CommentStyles', label: '注释风格组件 Props' },
+      { key: 'CommentStyles/SingleLineDocInterface', label: '单行 JSDoc 接口' },
+      { key: 'CommentStyles/MultiLineDocInterface', label: '多行 JSDoc 接口' },
+      { key: 'CommentStyles/AliasWithDoc', label: 'type alias 注释' },
+      { key: 'CommentStyles/DocumentedUnion', label: '联合类型注释' },
+      { key: 'CommentStyles/Permission', label: 'const 对象类型注释' },
+      { key: 'CommentStyles/ComplexCommentProps', label: '复杂属性注释' },
+    ],
   },
 ];
 
@@ -153,7 +165,8 @@ function App() {
                   <TypeDocPanel
                     typeKey={selectedType}
                     titlePrefix="类型"
-                    typeDocData={reactTypeDocData}
+                    data={reactTypeDocData}
+                    locale={zhCN}
                   />
                 </div>
                 <div className="viewer-panel">

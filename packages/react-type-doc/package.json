@@ -11,13 +11,13 @@
     "component",
     "docgen"
   ],
-  "homepage": "https://github.com/yourusername/react-type-doc#readme",
+  "homepage": "https://github.com/hei-f/react-type-doc#readme",
   "bugs": {
-    "url": "https://github.com/yourusername/react-type-doc/issues"
+    "url": "https://github.com/hei-f/react-type-doc/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/react-type-doc.git"
+    "url": "git+https://github.com/hei-f/react-type-doc.git"
   },
   "license": "MIT",
   "author": "",

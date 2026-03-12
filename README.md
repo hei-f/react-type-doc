@@ -183,6 +183,24 @@ switch (renderInfo.type) {
 
 ---
 
+## 🤖 Cursor Skill
+
+如果你使用 [Cursor IDE](https://cursor.sh/)，推荐安装配套的 AI Skill，让 AI 助手能正确辅助你配置、生成和集成类型文档：
+
+从本仓库的 [`.cursor/skills/react-type-doc/`](.cursor/skills/react-type-doc/) 目录复制到你的项目中：
+
+```bash
+# 复制到项目（仅当前项目可用）
+cp -r <repo-path>/.cursor/skills/react-type-doc <your-project>/.cursor/skills/
+
+# 或复制到个人目录（所有项目可用）
+cp -r <repo-path>/.cursor/skills/react-type-doc ~/.cursor/skills/
+```
+
+安装后，Cursor 会在你使用 react-type-doc 相关功能时自动应用该 Skill。
+
+---
+
 ## 🚀 快速开始
 
 ### 安装

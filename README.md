@@ -39,7 +39,7 @@ onUpdate 接受一个对象，包含以下可选属性：
 
 ## ✨ 核心特性
 
-### 1. 完整的类型解析 ⭐⭐⭐⭐⭐
+### 1. 完整的类型解析
 
 **完全展开工具类型**：
 - ✅ `Partial<T>` → 显示所有可选属性
@@ -70,7 +70,7 @@ type FormData = Required<Pick<User, 'name' | 'email'>> & {
 
 ---
 
-### 2. 智能处理循环引用 ⭐⭐⭐⭐⭐
+### 2. 智能处理循环引用
 
 **自动检测并标记循环引用**：
 
@@ -102,7 +102,7 @@ interface TreeNode {
 
 ---
 
-### 3. 类型去重机制 ⭐⭐⭐⭐
+### 3. 类型去重机制
 
 **引用 + 注册表设计**：
 
@@ -130,7 +130,7 @@ interface TreeNode {
 
 ---
 
-### 4. 内置运行时 API ⭐⭐⭐⭐⭐
+### 4. 内置运行时 API
 
 **开箱即用的工具函数**：
 
@@ -180,8 +180,6 @@ switch (renderInfo.type) {
 | **条件类型** | ✅ | ❌ |
 | **映射类型** | ✅ | ❌ |
 | **模板字面量** | ✅ | ❌ |
-
-**[查看详细对比 →](./DETAILED_COMPARISON.md)**
 
 ---
 
@@ -271,6 +269,31 @@ npx react-type-doc
 
 ### 3. 在应用中使用
 
+#### 内置 UI 组件
+
+库提供了开箱即用的交互式类型文档面板，支持类型点击展开、面包屑导航、循环引用处理，内置中英文 i18n：
+
+```tsx
+import { TypeDocPanel, zhCN } from 'react-type-doc/ui';
+import typeData from './type-docs.json';
+
+function App() {
+  return (
+    <TypeDocPanel
+      typeKey="Button"
+      data={typeData}
+      locale={zhCN}
+    />
+  );
+}
+```
+
+> 内置组件依赖 `styled-components`，需要单独安装。
+
+#### 自定义渲染
+
+也可以使用运行时 API 完全自定义类型信息的展示方式：
+
 ```typescript
 import { PropsDocReader } from 'react-type-doc/runtime';
 import typeData from './type-docs.json';
@@ -284,7 +307,7 @@ function TypeDocViewer({ typeName }: { typeName: string }) {
   return (
     <div>
       <h2>{typeName}</h2>
-      {Object.entries(reader.getPropertyEntries(typeInfo)).map(([name, prop]) => {
+      {reader.getPropertyEntries(typeInfo).map(([name, prop]) => {
         const resolved = reader.resolveRef(prop);
         return (
           <div key={name}>
@@ -329,49 +352,6 @@ function TypeDocViewer({ typeName }: { typeName: string }) {
    // 展示 GraphQL 类型定义
    <GraphQLTypeDocs types={typeData} />
    ```
-
-### ⚠️ 不适合的场景
-
-1. 只需要简单的 PropTypes 文档（用 react-docgen）
-2. 已经在用 Storybook 且满足需求（用 react-docgen-typescript）
-3. 需要生成静态文档站点（用 TypeDoc）
-
----
-
-## 🎯 核心优势
-
-### vs react-docgen-typescript
-
-| 维度 | react-type-doc | react-docgen-typescript |
-|------|----------------|------------------------|
-| **设计目标** | 完整类型信息 + 运行时展示 | Storybook 文档生成 |
-| **工具类型** | ✅ 完全展开 | ❌ 保持原样 |
-| **循环引用** | ✅ 智能检测 | ❌ 简单引用 |
-| **运行时 API** | ✅ 内置完整 | ❌ 需自建 |
-| **类型去重** | ✅ 引用机制 | ❌ 重复存储 |
-| **性能** | ✅ 2.2倍更快 | - |
-| **输出大小** | 103KB | 18KB |
-| **功能支持** | 12/12 | 7/12 |
-| **易用性** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
-
-**[查看详细对比文档 →](./DETAILED_COMPARISON.md)**
-
----
-
-## 📊 性能数据
-
-基于 18 个组件/类型的实测数据：
-
-| 工具 | 执行时间 | 输出大小 | 功能支持 |
-|------|----------|---------|---------|
-| **react-type-doc** | 2.5s | 103KB | 12/12 ✅ |
-| react-docgen-typescript | 5.5s | 18KB | 7/12 |
-| react-docgen | 0.1s | 9KB | 3/12 |
-
-**结论**：
-- 🏆 **功能最全**：react-type-doc（唯一支持所有 12 项特性）
-- ⚡ **性能优秀**：比 react-docgen-typescript 快 2.2 倍
-- 📦 **合理权衡**：用稍大的文件换取完整的类型信息
 
 ---
 
@@ -425,164 +405,13 @@ options: {
 
 ---
 
-## 🎓 进阶用法
-
-### 完整的类型文档面板组件
-
-`react-type-doc` 的运行时 API 设计用于构建交互式的类型文档 UI。以下是一个完整的生产级组件示例，展示了所有核心 API 的使用：
-
-**📦 完整代码**: [`packages/example/src/components/TypeDocPanel/`](./packages/example/src/components/TypeDocPanel/)
-
-**✨ 功能特性**:
-- 🎨 VS Code 风格的代码编辑器主题
-- 🔍 点击类型名称展开嵌套类型定义
-- 🧭 面包屑导航支持返回上一级
-- 📝 自动展示 JSDoc 注释
-- 📍 显示类型的源码位置
-- ♻️ 智能处理循环引用
-- 🌐 外部类型提示
-
-**使用示例**:
-
-```tsx
-import TypeDocPanel from './components/TypeDocPanel';
-import typeData from './type-docs.json';
-
-function App() {
-  return (
-    <TypeDocPanel
-      typeKey="ButtonProps"
-      titlePrefix="组件 Props"
-      typeDocData={typeData}
-    />
-  );
-}
-```
-
-**核心实现片段**:
-
-```tsx
-// 组件主体使用了所有关键的运行时 API
-const reader = useMemo(() => {
-  return PropsDocReader.getInstance(propsDocData ?? undefined);
-}, [propsDocData]);
-
-// 获取类型渲染信息 - 自动识别类型类别
-const renderInfo = reader.getTypeRenderInfo(typeInfo);
-
-switch (renderInfo.type) {
-  case RENDER_TYPE.EXTERNAL:
-    // 外部库类型（如 React.ReactNode）
-    return <TypeName>{renderInfo.name}</TypeName>;
-    
-  case RENDER_TYPE.CIRCULAR:
-    // 循环引用类型 - 可点击导航
-    return (
-      <ClickableTypeName onClick={() => navigate(renderInfo.resolved)}>
-        {renderInfo.name}
-      </ClickableTypeName>
-    );
-    
-  case RENDER_TYPE.UNION:
-    // 联合类型 - 递归渲染每个分支
-    return renderInfo.types.map(type => renderTypeText(type));
-    
-  case RENDER_TYPE.OBJECT:
-    // 对象类型 - 可展开属性
-    if (renderInfo.expandable) {
-      return <ClickableTypeName onClick={expand}>{renderInfo.name}</ClickableTypeName>;
-    }
-    return <TypeName>{renderInfo.name}</TypeName>;
-}
-
-// 获取所有属性 - 返回 [name, typeInfo] 数组
-const properties = reader.getPropertyEntries(typeInfo);
-
-// 解析类型引用 - 处理 TypeRef
-const resolved = reader.resolveRef(propInfo);
-
-// 获取导航目标 - 用于类型跳转
-const target = reader.getNavigationTarget(typeInfo, typeName);
-```
-
-**完整源码**: 查看 [`TypeDocPanel/index.tsx`](./packages/example/src/components/TypeDocPanel/index.tsx) 了解完整实现细节。
-
----
-
 ## 📚 文档
 
-- **[快速开始指南](./GETTING_STARTED.md)** - 项目改造完整说明
-- **[详细对比文档](./DETAILED_COMPARISON.md)** - 与 react-docgen-typescript 的详细对比
-- **[竞品分析](./COMPETITOR_ANALYSIS.md)** - 所有工具的定位和选择建议
-- **[为什么不对比 TypeDoc](./WHY_NOT_TYPEDOC.md)** - 工具定位说明
-- **[测试指南](./TEST_GUIDE.md)** - 如何运行对比测试
-- **[使用指南](./USAGE.md)** - 完整的使用文档
-
----
-
-## 🤝 适用场景决策树
-
-```
-需要类型文档？
-├─ 是否使用 Storybook？
-│  ├─ 是 → react-docgen-typescript ✅
-│  └─ 否 → 继续
-│
-├─ 是否需要生成静态文档站点？
-│  ├─ 是 → TypeDoc ✅
-│  └─ 否 → 继续
-│
-├─ 是否需要完整的类型信息？
-│  ├─ 是 → react-type-doc ✅
-│  └─ 否 → 继续
-│
-├─ 是否使用 TypeScript？
-│  ├─ 是 → react-type-doc ✅
-│  └─ 否 → react-docgen ✅
-```
-
----
-## 🔄 版本历史
-
-查看 [CHANGELOG.md](./CHANGELOG.md) 了解版本更新历史。
+- **[更新日志](./CHANGELOG.md)** - 版本更新历史
+- **[示例项目](./packages/example/)** - 包含完整的交互式类型文档面板组件
 
 ---
 
 ## 📄 许可证
 
-MIT © [Your Name]
-
----
-
-## 🙏 致谢
-
-感谢以下开源项目：
-- [ts-morph](https://github.com/dsherret/ts-morph) - TypeScript 编译器 API 封装
-
----
-
-## 🔗 相关链接
-
-- [GitHub Repository](https://github.com/hei-f/react-type-doc)
-- [NPM Package](https://www.npmjs.com/package/react-type-doc)
-- [Issue Tracker](https://github.com/hei-f/react-type-doc/issues)
-- [在线演示](https://your-demo-site.com)
-
----
-
-## 🎯 核心理念
-
-**react-type-doc** 的设计理念：
-
-> 类型信息不应该只是给开发者看的注释，  
-> 而应该是可以在运行时使用的结构化数据。
-
-我们相信：
-- ✅ 完整性 > 简洁性（当需要完整信息时）
-- ✅ 运行时 > 构建时（当需要动态展示时）
-- ✅ 结构化 > 字符串化（当需要程序处理时）
-- ✅ 专注 > 全能（只做类型数据生成这一件事）
-
----
-
-**开始使用 react-type-doc，让类型信息真正"活"起来！** 🚀
+MIT

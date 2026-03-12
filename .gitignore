@@ -44,4 +44,7 @@ Thumbs.db
 !.cursor/commands/
 .cursor/commands/*
 !.cursor/commands/publish-npm.md
+!.cursor/skills/
+.cursor/skills/*
+!.cursor/skills/react-type-doc/
 DETAILED_COMPARISON.md

@@ -27,6 +27,9 @@ export const CACHE_PREFIX_ANON = 'anon:';
 /** 显示文本常量 */
 export const DISPLAY_ANONYMOUS_OBJECT = '[匿名对象]';
 export const DISPLAY_MAX_DEPTH_REACHED = '[达到最大深度]';
+
+/** 匿名对象紧凑摘要中最多显示的属性数 */
+const ANONYMOUS_OBJECT_PREVIEW_MAX_PROPS = 3;
 export const TS_ANONYMOUS_TYPE = '__type';
 
 /** Symbol 属性前缀 */
@@ -99,9 +102,9 @@ export function getTypeDisplayName(type: Type, typeText: string): string {
     return typeText;
   }
 
-  // 匿名对象类型
+  // 匿名对象类型：生成紧凑属性摘要使不同匿名对象可区分
   if (typeText.startsWith('{')) {
-    return DISPLAY_ANONYMOUS_OBJECT;
+    return getCompactObjectSummary(type);
   }
 
   const symbol = type.getSymbol();
@@ -125,6 +128,24 @@ export function getTypeDisplayName(type: Type, typeText: string): string {
 
   // 回退到 Object
   return 'Object';
+}
+
+/**
+ * 生成匿名对象类型的紧凑属性名摘要
+ * 如 `{ id, name, email }` 或 `{ id, name, ... }`
+ * @returns 紧凑摘要文本，无属性时回退为 DISPLAY_ANONYMOUS_OBJECT
+ */
+function getCompactObjectSummary(type: Type): string {
+  const properties = type.getProperties();
+  if (properties.length === 0) {
+    return DISPLAY_ANONYMOUS_OBJECT;
+  }
+
+  const displayProps = properties.slice(0, ANONYMOUS_OBJECT_PREVIEW_MAX_PROPS);
+  const propNames = displayProps.map((p) => p.getName());
+  const hasMore = properties.length > ANONYMOUS_OBJECT_PREVIEW_MAX_PROPS;
+
+  return `{ ${propNames.join(', ')}${hasMore ? ', ...' : ''} }`;
 }
 
 /**

@@ -105,3 +105,25 @@ export interface Entity<T extends Comparable & Serializable> {
   compare: (other: T) => number;
   serialize: () => string;
 }
+
+// ============================================================
+// 泛型实例化（用实际类型替换类型参数）
+// ============================================================
+
+/** 基础泛型实例化：将类型参数替换为具体原始类型 */
+export type StringBox = Box<string>;
+
+/** 多类型参数实例化 */
+export type StringNumberPair = Pair<string, number>;
+
+/** 使用默认类型参数（不传入类型参数，由默认值 unknown / Error 生效） */
+export type DefaultResponse = Response;
+
+/** 覆盖默认类型参数：传入自定义的数据和错误类型 */
+export type UserResponse = Response<
+  { id: string; name: string; email: string },
+  { code: number; message: string }
+>;
+
+/** 约束泛型实例化：string[] 满足 Lengthwise 约束（拥有 length 属性） */
+export type StringArrayWithLength = WithLength<string[]>;

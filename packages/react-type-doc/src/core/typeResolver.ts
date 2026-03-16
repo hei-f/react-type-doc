@@ -4,9 +4,14 @@
  */
 
 import { Node } from 'ts-morph';
-import type { SourceFile, VariableDeclaration } from 'ts-morph';
+import type {
+  SourceFile,
+  VariableDeclaration,
+  TypeAliasDeclaration,
+} from 'ts-morph';
 import type { TypeInfo } from '../shared/types';
 import { parseTypeInfo } from './parser';
+import { cleanTypeText } from './parser/utils/helpers';
 import {
   extractDescription,
   resolveDescriptionLinks,
@@ -41,7 +46,7 @@ function resolveNamespacedTypeInModule(
     const typeAlias = module.getTypeAlias(typeName);
     if (typeAlias) {
       const type = typeAlias.getType();
-      const result = parseTypeInfo(type);
+      const result = applyGenericOriginName(typeAlias, parseTypeInfo(type));
       return attachDescription(result, typeAlias);
     }
 
@@ -101,7 +106,7 @@ function resolveNamespacedType(
   const typeAlias = namespace.getTypeAlias(typeName);
   if (typeAlias) {
     const type = typeAlias.getType();
-    const result = parseTypeInfo(type);
+    const result = applyGenericOriginName(typeAlias, parseTypeInfo(type));
     return attachDescription(result, typeAlias);
   }
 
@@ -185,6 +190,34 @@ function attachDescription(
 }
 
 /**
+ * 当类型别名引用了泛型类型（如 type X = Generic<Args>）时，
+ * 从 AST 节点提取泛型来源文本设为 name 字段。
+ * typeAlias.getType() 返回完全展开的结构类型时 aliasSymbol 可能丢失，
+ * 通过读取声明节点的右侧类型文本来弥补这一信息缺失。
+ */
+function applyGenericOriginName(
+  typeAlias: TypeAliasDeclaration,
+  result: TypeInfo,
+): TypeInfo {
+  if ('$ref' in result) {
+    return result;
+  }
+
+  const typeNode = typeAlias.getTypeNode();
+  if (!typeNode) {
+    return result;
+  }
+
+  const rawText = typeNode.getText();
+  if (!rawText.includes('<')) {
+    return result;
+  }
+
+  const normalizedName = cleanTypeText(rawText).replace(/\s+/g, ' ').trim();
+  return { ...result, name: normalizedName };
+}
+
+/**
  * 解析简单类型（非命名空间）
  */
 function resolveSimpleType(
@@ -213,7 +246,7 @@ function resolveSimpleType(
   const typeAlias = sourceFile.getTypeAlias(typeName);
   if (typeAlias) {
     const type = typeAlias.getType();
-    const result = parseTypeInfo(type);
+    const result = applyGenericOriginName(typeAlias, parseTypeInfo(type));
     return attachDescription(result, typeAlias);
   }
 

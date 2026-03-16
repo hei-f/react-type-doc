@@ -167,7 +167,40 @@ switch (renderInfo.type) {
 
 ---
 
-### 5. 完整的 TypeScript 支持
+### 5. JSDoc 注释提取
+
+**完整提取 JSDoc 注释信息**，不仅限于组件 Props，支持所有类型声明：
+
+```typescript
+/**
+ * 异步提交处理器
+ * @param key - 变更的字段名
+ * @param value - 新的值
+ * @returns 提交是否成功
+ */
+onSubmit: (key: string, value: unknown) => Promise<boolean>;
+```
+
+```json
+{
+  "description": "异步提交处理器\n@param key - 变更的字段名\n@param value - 新的值\n@returns 提交是否成功",
+  "kind": "function",
+  "text": "(key: string, value: unknown) => Promise<boolean>"
+}
+```
+
+**支持的注释场景**：
+- ✅ `interface` / `type alias` / `enum` 上的类型级注释
+- ✅ 属性级 JSDoc（`@param`、`@returns`、`@default`、`@description`）
+- ✅ `as const` 对象及其成员的注释
+- ✅ 多行描述和多段落注释
+- ✅ `{@link TypeName}` 内联链接解析
+
+**其他工具**：仅提取组件 Props 的简单描述，不支持 `@param`/`@returns` 等标签
+
+---
+
+### 6. 完整的 TypeScript 支持
 
 | 特性 | react-type-doc | react-docgen-typescript |
 |------|----------------|------------------------|
@@ -180,6 +213,8 @@ switch (renderInfo.type) {
 | **条件类型** | ✅ | ❌ |
 | **映射类型** | ✅ | ❌ |
 | **模板字面量** | ✅ | ❌ |
+| **JSDoc 多标签** | ✅ | ⚠️ 仅描述 |
+| **`as const` 对象** | ✅ | ❌ |
 
 ---
 
@@ -246,6 +281,12 @@ export default defineConfig({
       typeName: 'UserInfo',
     },
   },
+
+  // 目录扫描模式（可与 registry 混合使用）
+  // 约定：子文件夹/index.tsx → 组件，子文件夹/doc.types.ts → 类型
+  scanDirs: [
+    { path: './src/components' },
+  ],
 });
 ```
 

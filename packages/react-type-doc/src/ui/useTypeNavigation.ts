@@ -1,5 +1,4 @@
 import type { OutputResult, TypeInfo } from '../shared/types';
-import { DISPLAY_ANONYMOUS_OBJECT } from '../shared/constants';
 import { PropsDocReader } from '../runtime/reader';
 import { useMemo, useState } from 'react';
 import type { TypeDocLocale } from './locale';
@@ -78,8 +77,11 @@ export function useTypeNavigation(
 
     let displayTitle = target.name;
 
-    if (target.name === DISPLAY_ANONYMOUS_OBJECT && fieldName) {
-      displayTitle = locale.anonymousObjectField(fieldName);
+    // 匿名对象的 name 为紧凑摘要（如 `{ id, name, email }`），以 `{` 开头
+    // 命名类型不会以 `{` 开头，因此可安全区分
+    const isAnonymousObject = target.name?.startsWith('{');
+    if (isAnonymousObject && fieldName) {
+      displayTitle = locale.anonymousObjectField(fieldName, target.name);
     }
 
     setHistoryStack((prev) => [

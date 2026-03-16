@@ -92,7 +92,7 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
     return (
       <TypeDocPanelContainer>
         <PanelHeader>
-          <PanelTitle>{rootDisplayTitle}</PanelTitle>
+          <PanelTitle title={rootDisplayTitle}>{rootDisplayTitle}</PanelTitle>
         </PanelHeader>
         {renderUnionTypeView(rootDisplayName, typeInfo, context)}
       </TypeDocPanelContainer>
@@ -112,7 +112,7 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
     return (
       <TypeDocPanelContainer>
         <PanelHeader>
-          <PanelTitle>
+          <PanelTitle title={`${rootDisplayTitle} — ${locale.propertiesCount(0)}`}>
             {rootDisplayTitle} — {locale.propertiesCount(0)}
           </PanelTitle>
         </PanelHeader>
@@ -129,22 +129,26 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
     ? reader.getDisplayName(resolvedCurrentType, currentTitle)
     : currentTitle;
 
+  const panelTitleText = isInNestedView
+    ? isNestedUnion
+      ? getBaseName(displayTypeName)
+      : `${getBaseName(displayTypeName)} — ${locale.propertiesCount(currentPropEntries.length)}`
+    : `${rootDisplayTitle} — ${locale.propertiesCount(propEntries.length)}`;
+
   return (
     <TypeDocPanelContainer>
       <PanelHeader>
-        <PanelTitle>
-          {isInNestedView
-            ? isNestedUnion
-              ? getBaseName(displayTypeName)
-              : `${getBaseName(displayTypeName)} — ${locale.propertiesCount(currentPropEntries.length)}`
-            : `${rootDisplayTitle} — ${locale.propertiesCount(propEntries.length)}`}
-        </PanelTitle>
+        <PanelTitle title={panelTitleText}>{panelTitleText}</PanelTitle>
       </PanelHeader>
 
       {/* 面包屑导航区域 */}
       <BreadcrumbWrapper $visible={isInNestedView}>
         <BreadcrumbContainer>
-          <BreadcrumbItem $clickable onClick={() => navigateToLevel(-1)}>
+          <BreadcrumbItem
+            $clickable
+            title={rootDisplayTitle}
+            onClick={() => navigateToLevel(-1)}
+          >
             {rootDisplayTitle}
           </BreadcrumbItem>
           {historyStack.map((item, index) => (
@@ -152,6 +156,7 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
               <BreadcrumbSeparator>›</BreadcrumbSeparator>
               <BreadcrumbItem
                 $clickable={index < historyStack.length - 1}
+                title={item.title}
                 onClick={() => {
                   if (index < historyStack.length - 1) {
                     navigateToLevel(index);

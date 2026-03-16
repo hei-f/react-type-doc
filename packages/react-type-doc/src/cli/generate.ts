@@ -4,8 +4,9 @@
  */
 
 import fs from 'fs';
+import { pathToFileURL } from 'node:url';
 import path from 'path';
-import { Project } from 'ts-morph';
+import { Project, ts } from 'ts-morph';
 import { findComponentProps } from '../core/componentParser';
 import {
   clearTypeCache,
@@ -194,6 +195,8 @@ function calculateDuration(startTime: number): string {
 
 /**
  * 加载配置文件
+ * Node.js 不支持直接 import .ts 文件，
+ * 利用 ts-morph 内置的 TypeScript API 将配置转译为临时 .mjs 后再导入
  */
 async function loadConfig(projectRoot: string): Promise<ReactTypeDocConfig> {
   const configPath = path.resolve(projectRoot, 'reactTypeDoc.config.ts');
@@ -204,11 +207,30 @@ async function loadConfig(projectRoot: string): Promise<ReactTypeDocConfig> {
     );
   }
 
-  // 动态导入 TypeScript 配置文件
-  const configModule = await import(configPath);
-  const config = configModule.default || configModule;
+  const tsContent = fs.readFileSync(configPath, 'utf-8');
 
-  return config;
+  const { outputText } = ts.transpileModule(tsContent, {
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ESNext,
+      esModuleInterop: true,
+    },
+  });
+
+  const tempConfigPath = path.resolve(
+    projectRoot,
+    `.reactTypeDoc.config.${Date.now()}.tmp.mjs`,
+  );
+  fs.writeFileSync(tempConfigPath, outputText, 'utf-8');
+
+  try {
+    const configModule = await import(pathToFileURL(tempConfigPath).href);
+    return configModule.default || configModule;
+  } finally {
+    if (fs.existsSync(tempConfigPath)) {
+      fs.unlinkSync(tempConfigPath);
+    }
+  }
 }
 
 // ============================================================

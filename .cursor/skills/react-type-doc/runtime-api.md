@@ -110,8 +110,7 @@ switch (renderInfo.type) {
 ## 自定义渲染示例
 
 ```tsx
-import { PropsDocReader, RENDER_TYPE } from 'react-type-doc/runtime';
-import type { TypeInfo } from 'react-type-doc/runtime';
+import { PropsDocReader, RENDER_TYPE, type TypeInfo } from 'react-type-doc/runtime';
 import typeData from './type-docs.json';
 
 function TypeViewer({ typeKey }: { typeKey: string }) {

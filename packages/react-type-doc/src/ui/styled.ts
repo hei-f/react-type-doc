@@ -67,6 +67,10 @@ export const PanelTitle = styled.span`
   color: #abb2bf;
   font-size: 13px;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 `;
 
 /** 代码区域容器 */
@@ -260,7 +264,10 @@ export const BreadcrumbContainer = styled.div`
 export const BreadcrumbItem = styled.span<{ $clickable?: boolean }>`
   color: ${(props) => (props.$clickable ? '#61afef' : '#abb2bf')};
   cursor: ${(props) => (props.$clickable ? 'pointer' : 'default')};
-  flex-shrink: 0;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 
   &:hover {
     text-decoration: ${(props) => (props.$clickable ? 'underline' : 'none')};

@@ -102,6 +102,11 @@ export default defineConfig({
       typeName: 'ApiResponse',
     },
 
+    LongAnonymousTypes: {
+      sourcePath: './src/types/composite.ts',
+      typeName: 'LongAnonymousTypes',
+    },
+
     Box: {
       sourcePath: './src/types/generics.ts',
       typeName: 'Box',
@@ -110,6 +115,31 @@ export default defineConfig({
     Repository: {
       sourcePath: './src/types/generics.ts',
       typeName: 'Repository',
+    },
+
+    StringBox: {
+      sourcePath: './src/types/generics.ts',
+      typeName: 'StringBox',
+    },
+
+    StringNumberPair: {
+      sourcePath: './src/types/generics.ts',
+      typeName: 'StringNumberPair',
+    },
+
+    DefaultResponse: {
+      sourcePath: './src/types/generics.ts',
+      typeName: 'DefaultResponse',
+    },
+
+    UserResponse: {
+      sourcePath: './src/types/generics.ts',
+      typeName: 'UserResponse',
+    },
+
+    StringArrayWithLength: {
+      sourcePath: './src/types/generics.ts',
+      typeName: 'StringArrayWithLength',
     },
 
     User: {

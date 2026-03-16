@@ -44,6 +44,7 @@ const TYPE_GROUPS = [
       { key: 'DocumentNode', label: '复杂联合类型' },
       { key: 'FullEntity', label: '交叉类型' },
       { key: 'Dictionary', label: '索引签名类型' },
+      { key: 'LongAnonymousTypes', label: '超长匿名对象/函数' },
     ],
   },
   {
@@ -51,6 +52,11 @@ const TYPE_GROUPS = [
     types: [
       { key: 'Box', label: '基础泛型' },
       { key: 'Repository', label: '泛型约束' },
+      { key: 'StringBox', label: '实例化 - Box<string>' },
+      { key: 'StringNumberPair', label: '实例化 - Pair<string, number>' },
+      { key: 'DefaultResponse', label: '实例化 - 默认类型参数' },
+      { key: 'UserResponse', label: '实例化 - 覆盖默认参数' },
+      { key: 'StringArrayWithLength', label: '实例化 - 约束泛型' },
     ],
   },
   {

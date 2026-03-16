@@ -33,7 +33,7 @@ export interface TypeDocLocale {
   /** Display name for anonymous objects */
   anonymousObject: string;
   /** Display name for anonymous objects within a named field */
-  anonymousObjectField: (fieldName: string) => string;
+  anonymousObjectField: (fieldName: string, summary?: string) => string;
   /** Display name for union members (e.g., "Member 1") */
   unionMember: (index: number) => string;
 
@@ -70,7 +70,8 @@ export const en: TypeDocLocale = {
   clickToView: (typeName) => `Click to view ${typeName}`,
 
   anonymousObject: '[Anonymous Object]',
-  anonymousObjectField: (fieldName) => `.${fieldName}[Anonymous Object]`,
+  anonymousObjectField: (fieldName, summary) =>
+    `.${fieldName} ${summary ?? '[Anonymous Object]'}`,
   unionMember: (index) => `Member ${index}`,
 
   propertiesCount: (count) => `${count} properties`,
@@ -103,7 +104,8 @@ export const zhCN: TypeDocLocale = {
   clickToView: (typeName) => `点击查看 ${typeName}`,
 
   anonymousObject: '[匿名对象]',
-  anonymousObjectField: (fieldName) => `.${fieldName}[匿名对象]`,
+  anonymousObjectField: (fieldName, summary) =>
+    `.${fieldName} ${summary ?? '[匿名对象]'}`,
   unionMember: (index) => `成员${index}`,
 
   propertiesCount: (count) => `${count} 个属性`,

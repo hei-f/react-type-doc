@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-16
+
+### Added
+
+- 匿名对象显示紧凑属性摘要（如 `{ id, name, email }`），替代统一的 `[匿名对象]` 文本
+- type alias 引用泛型类型时保留来源名称（如 `Box<string>` 而非展开后的结构）
+
+### Fixed
+
+- 修复 CLI 执行 `npx react-type-doc` 时报错 `Unknown file extension ".ts"` 的问题
+- 修复超长匿名类型名导致面板标题和面包屑导航无法点击的布局问题
+
 ## [1.0.1] - 2026-03-12
 
 ### Changed
@@ -29,5 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 索引签名、元组、重载函数签名等高级类型支持
 - ESM / CommonJS 双格式输出
 
+[1.1.0]: https://github.com/hei-f/react-type-doc/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/hei-f/react-type-doc/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/hei-f/react-type-doc/releases/tag/v1.0.0

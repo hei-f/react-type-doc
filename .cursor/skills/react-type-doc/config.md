@@ -87,6 +87,8 @@ scanDirs: [
 options: {
   maxDepth: 5,                     // 最大递归深度（默认 5）
   maxTypeTextLength: 100,          // 类型文本最大显示长度
+  maxDetailedTypeTextLength: 200,  // 详细类型文本最大长度（可选）
+  cacheMaxTypeTextLength: 200,     // 缓存键最大文本长度（可选，默认 200）
   enableSourceLocation: false,     // 是否记录源码位置（默认 false，开启会增大输出）
   extraSkipTypes: [],              // 额外跳过的类型（精确匹配，如 'HTMLElement'）
   extraSkipPrefixes: [],           // 额外跳过的类型前缀（如 'Internal'）

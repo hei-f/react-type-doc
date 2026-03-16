@@ -86,6 +86,79 @@ export type ApiResponse<T = unknown> =
       status: 'loading';
     };
 
+/** 包含超长匿名对象和函数类型的接口（测试 UI 标题/面包屑截断） */
+export interface LongAnonymousTypes {
+  /** 超长匿名对象：数据库连接配置 */
+  databaseConfig: {
+    host: string;
+    port: number;
+    databaseName: string;
+    username: string;
+    password: string;
+    maxConnections: number;
+    connectionTimeout: number;
+    retryAttempts: number;
+    enableSSL: boolean;
+    sslCertificatePath: string;
+    poolSize: number;
+    idleTimeout: number;
+  };
+  /** 超长匿名函数：复杂表单提交回调 */
+  onFormSubmit: (
+    formData: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      password: string;
+      confirmPassword: string;
+      phoneNumber: string;
+      address: string;
+      city: string;
+      zipCode: string;
+      country: string;
+    },
+    options: {
+      validateEmail: boolean;
+      sendConfirmation: boolean;
+      redirectUrl: string;
+      enableTwoFactor: boolean;
+    },
+  ) => Promise<{
+    success: boolean;
+    userId: string;
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: number;
+  }>;
+  /** 超长匿名联合类型 */
+  response:
+    | {
+        type: 'success';
+        data: {
+          id: string;
+          name: string;
+          email: string;
+          role: string;
+          permissions: string[];
+        };
+      }
+    | {
+        type: 'validationError';
+        fields: {
+          fieldName: string;
+          errorMessage: string;
+          errorCode: number;
+        }[];
+      }
+    | {
+        type: 'serverError';
+        statusCode: number;
+        message: string;
+        traceId: string;
+        timestamp: string;
+      };
+}
+
 /** 复杂联合类型 */
 export interface TextNode {
   type: 'text';

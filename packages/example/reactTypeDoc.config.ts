@@ -43,6 +43,30 @@ export default defineConfig({
       sourcePath: './src/components/GenericComponent.tsx',
     },
 
+    StringGenericComponent: {
+      sourcePath: './src/components/GenericComponent.tsx',
+    },
+
+    StringBoxComponent: {
+      sourcePath: './src/components/GenericComponent.tsx',
+    },
+
+    StringNumberPairComponent: {
+      sourcePath: './src/components/GenericComponent.tsx',
+    },
+
+    DefaultResponseComponent: {
+      sourcePath: './src/components/GenericComponent.tsx',
+    },
+
+    UserResponseComponent: {
+      sourcePath: './src/components/GenericComponent.tsx',
+    },
+
+    StringArrayWithLengthComponent: {
+      sourcePath: './src/components/GenericComponent.tsx',
+    },
+
     ComplexPropsComponent: {
       sourcePath: './src/components/ComplexPropsComponent.tsx',
     },

@@ -924,4 +924,167 @@ describe('类型解析器', () => {
       }
     });
   });
+
+  describe('泛型实例化', () => {
+    it('应该正确实例化泛型接口的函数属性参数类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export interface GenericProps<T> {
+          data: T;
+          renderItem: (item: T) => string;
+        }
+        
+        export type StringProps = GenericProps<string>;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'StringProps');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if (
+        'kind' in typeInfo &&
+        typeInfo.kind === 'object' &&
+        'properties' in typeInfo &&
+        typeInfo.properties
+      ) {
+        // 验证 data 属性已实例化为 string
+        const dataProp = typeInfo.properties.data;
+        expect(dataProp).toBeDefined();
+        if (dataProp && '$ref' in dataProp) {
+          expect(dataProp.$ref).toBe('primitive:string');
+        } else if (dataProp && 'kind' in dataProp) {
+          expect(dataProp.kind).toBe('primitive');
+          expect(dataProp.text).toBe('string');
+        }
+
+        // 验证 renderItem 函数的参数类型已实例化为 string
+        const renderItemProp = typeInfo.properties.renderItem;
+        expect(renderItemProp).toBeDefined();
+        if (
+          renderItemProp &&
+          'kind' in renderItemProp &&
+          renderItemProp.kind === 'function' &&
+          'signatures' in renderItemProp &&
+          renderItemProp.signatures
+        ) {
+          const sig = renderItemProp.signatures[0];
+          expect(sig).toBeDefined();
+          expect(sig?.parameters).toBeDefined();
+          expect(sig?.parameters.length).toBe(1);
+
+          const param = sig?.parameters[0];
+          expect(param).toBeDefined();
+          expect(param?.name).toBe('item');
+
+          // 关键验证：参数类型应该是 string，而不是泛型 T
+          const paramType = param?.type;
+          if (paramType && '$ref' in paramType) {
+            expect(paramType.$ref).toBe('primitive:string');
+          } else if (paramType && 'kind' in paramType) {
+            expect(paramType.kind).toBe('primitive');
+            expect(paramType.text).toBe('string');
+          }
+        }
+      }
+    });
+
+    it('应该正确实例化多类型参数的泛型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export interface Pair<K, V> {
+          key: K;
+          value: V;
+          compare: (a: K, b: K) => boolean;
+        }
+        
+        export type StringNumberPair = Pair<string, number>;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'StringNumberPair');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if (
+        'kind' in typeInfo &&
+        typeInfo.kind === 'object' &&
+        'properties' in typeInfo &&
+        typeInfo.properties
+      ) {
+        // 验证 compare 函数的参数类型
+        const compareProp = typeInfo.properties.compare;
+        if (
+          compareProp &&
+          'kind' in compareProp &&
+          compareProp.kind === 'function' &&
+          'signatures' in compareProp &&
+          compareProp.signatures
+        ) {
+          const sig = compareProp.signatures[0];
+          expect(sig?.parameters.length).toBe(2);
+
+          // 两个参数都应该是 string 类型（K 被实例化为 string）
+          const param1 = sig?.parameters[0];
+          const param2 = sig?.parameters[1];
+
+          if (param1?.type && '$ref' in param1.type) {
+            expect(param1.type.$ref).toBe('primitive:string');
+          }
+          if (param2?.type && '$ref' in param2.type) {
+            expect(param2.type.$ref).toBe('primitive:string');
+          }
+        }
+      }
+    });
+
+    it('应该保持未实例化泛型的泛型参数', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export interface GenericProps<T> {
+          data: T;
+          renderItem: (item: T) => string;
+        }
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'GenericProps');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if (
+        'kind' in typeInfo &&
+        typeInfo.kind === 'object' &&
+        'properties' in typeInfo &&
+        typeInfo.properties
+      ) {
+        // 验证未实例化的泛型应该保留 T
+        const renderItemProp = typeInfo.properties.renderItem;
+        if (
+          renderItemProp &&
+          'kind' in renderItemProp &&
+          renderItemProp.kind === 'function' &&
+          'signatures' in renderItemProp &&
+          renderItemProp.signatures
+        ) {
+          const sig = renderItemProp.signatures[0];
+          const param = sig?.parameters[0];
+
+          // 未实例化的泛型，参数类型应该是 T
+          const paramType = param?.type;
+          if (paramType && '$ref' in paramType) {
+            expect(paramType.$ref).toContain('T');
+          } else if (paramType && 'text' in paramType) {
+            expect(paramType.text).toContain('T');
+          }
+        }
+      }
+    });
+  });
 });

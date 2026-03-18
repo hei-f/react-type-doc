@@ -57,6 +57,12 @@ const TYPE_GROUPS = [
       { key: 'DefaultResponse', label: '实例化 - 默认类型参数' },
       { key: 'UserResponse', label: '实例化 - 覆盖默认参数' },
       { key: 'StringArrayWithLength', label: '实例化 - 约束泛型' },
+      { key: 'StringGenericComponent', label: '实例化 - 组件 Props<string>' },
+      { key: 'StringBoxComponent', label: '实例化组件 - Box<string>' },
+      { key: 'StringNumberPairComponent', label: '实例化组件 - Pair<string, number>' },
+      { key: 'DefaultResponseComponent', label: '实例化组件 - Response 默认参数' },
+      { key: 'UserResponseComponent', label: '实例化组件 - Response<User, Error>' },
+      { key: 'StringArrayWithLengthComponent', label: '实例化组件 - WithLength<string[]>' },
     ],
   },
   {

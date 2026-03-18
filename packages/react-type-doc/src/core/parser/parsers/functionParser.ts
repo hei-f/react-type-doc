@@ -35,7 +35,9 @@ function parseFunctionParameter(
   let rest = false;
 
   if (paramDecl && TsMorphNode.isNode(paramDecl)) {
-    const declType = paramDecl.getType();
+    // 使用 getTypeAtLocation 获取实例化后的类型
+    // 这确保了泛型参数（如 T）会被替换为实际的类型（如 string）
+    const declType = param.getTypeAtLocation(paramDecl);
     paramType = recurse(declType, visited, depth + 1);
 
     // 检查是否为可选参数

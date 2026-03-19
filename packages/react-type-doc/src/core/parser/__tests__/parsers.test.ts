@@ -1034,9 +1034,15 @@ describe('类型解析器', () => {
 
           if (param1?.type && '$ref' in param1.type) {
             expect(param1.type.$ref).toBe('primitive:string');
+          } else if (param1?.type && 'kind' in param1.type) {
+            expect(param1.type.kind).toBe('primitive');
+            expect(param1.type.text).toBe('string');
           }
           if (param2?.type && '$ref' in param2.type) {
             expect(param2.type.$ref).toBe('primitive:string');
+          } else if (param2?.type && 'kind' in param2.type) {
+            expect(param2.type.kind).toBe('primitive');
+            expect(param2.type.text).toBe('string');
           }
         }
       }

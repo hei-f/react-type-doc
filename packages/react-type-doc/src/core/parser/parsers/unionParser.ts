@@ -10,6 +10,7 @@ import {
   isTypeRef,
   CACHE_PREFIX_PRIMITIVE,
   CACHE_PREFIX_TEXT,
+  CACHE_PREFIX_LITERAL,
 } from '../utils/helpers';
 
 /**
@@ -101,7 +102,9 @@ export function simplifyOptionalUnion(typeInfo: TypeInfo): TypeInfo {
         t.$ref === `${CACHE_PREFIX_TEXT}false` ||
         t.$ref === `${CACHE_PREFIX_TEXT}true` ||
         t.$ref === `${CACHE_PREFIX_PRIMITIVE}false` ||
-        t.$ref === `${CACHE_PREFIX_PRIMITIVE}true`
+        t.$ref === `${CACHE_PREFIX_PRIMITIVE}true` ||
+        t.$ref === `${CACHE_PREFIX_LITERAL}boolean:true` ||
+        t.$ref === `${CACHE_PREFIX_LITERAL}boolean:false`
       );
     }
     return t.text === 'false' || t.text === 'true';
@@ -112,7 +115,8 @@ export function simplifyOptionalUnion(typeInfo: TypeInfo): TypeInfo {
     if (isTypeRef(t)) {
       return (
         t.$ref === `${CACHE_PREFIX_TEXT}true` ||
-        t.$ref === `${CACHE_PREFIX_PRIMITIVE}true`
+        t.$ref === `${CACHE_PREFIX_PRIMITIVE}true` ||
+        t.$ref === `${CACHE_PREFIX_LITERAL}boolean:true`
       );
     }
     return t.text === 'true';
@@ -121,7 +125,8 @@ export function simplifyOptionalUnion(typeInfo: TypeInfo): TypeInfo {
     if (isTypeRef(t)) {
       return (
         t.$ref === `${CACHE_PREFIX_TEXT}false` ||
-        t.$ref === `${CACHE_PREFIX_PRIMITIVE}false`
+        t.$ref === `${CACHE_PREFIX_PRIMITIVE}false` ||
+        t.$ref === `${CACHE_PREFIX_LITERAL}boolean:false`
       );
     }
     return t.text === 'false';
@@ -149,6 +154,12 @@ export function simplifyOptionalUnion(typeInfo: TypeInfo): TypeInfo {
         }
         if (ref.startsWith(CACHE_PREFIX_PRIMITIVE)) {
           return ref.slice(CACHE_PREFIX_PRIMITIVE.length);
+        }
+        if (ref.startsWith(CACHE_PREFIX_LITERAL)) {
+          // literal:string:BasicInfoConfirm → BasicInfoConfirm
+          // literal:number:42 → 42
+          const parts = ref.slice(CACHE_PREFIX_LITERAL.length).split(':');
+          return parts.length === 2 ? parts[1] : ref;
         }
         return ref;
       }

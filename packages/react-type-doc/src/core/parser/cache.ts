@@ -10,9 +10,12 @@ import {
   CACHE_PREFIX_PRIMITIVE,
   CACHE_PREFIX_TEXT,
   CACHE_PREFIX_HASH,
+  CACHE_PREFIX_LITERAL,
   CACHE_MAX_TEXT_KEY_CONTENT_LENGTH,
   PRIMITIVE_TYPES,
   hashText,
+  extractLiteralValue,
+  getLiteralTypeCategory,
 } from './utils/helpers';
 import { getParseConfig, refreshParseConfig } from './config';
 
@@ -83,6 +86,13 @@ export function getCacheKey(type: Type, typeText: string): string | null {
   // 1. 基础类型使用固定 key
   if (PRIMITIVE_TYPES.has(typeText as (typeof PRIMITIVE_TYPE_NAMES)[number])) {
     return `${CACHE_PREFIX_PRIMITIVE}${typeText}`;
+  }
+
+  // 1.5. 字面量类型使用专用前缀（避免引号进入 key）
+  const literalCategory = getLiteralTypeCategory(type);
+  if (literalCategory !== null) {
+    const literalValue = extractLiteralValue(typeText);
+    return `${CACHE_PREFIX_LITERAL}${literalCategory}:${literalValue}`;
   }
 
   // 2. 数组类型不缓存（元素类型会单独缓存）

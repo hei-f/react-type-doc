@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-03-19
+
+### Added
+
+- 为字面量类型（字符串/数字/布尔）生成专用的缓存 Key 格式，避免引号进入缓存键
+- 新增 `extractLiteralValue` 工具函数，从类型文本中提取纯净的字面量值
+- 新增 `getLiteralTypeCategory` 工具函数，识别字面量类型分类
+
+### Fixed
+
+- 修复 unionParser 中对新字面量缓存 Key 格式的兼容性，确保布尔字面量和联合类型简化逻辑正确工作
+
+### Changed
+
+- 优化字面量类型的缓存命中率，提升类型解析性能
+
 ## [1.1.1] - 2026-03-18
 
 ### Fixed
@@ -47,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 索引签名、元组、重载函数签名等高级类型支持
 - ESM / CommonJS 双格式输出
 
+[1.1.2]: https://github.com/hei-f/react-type-doc/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/hei-f/react-type-doc/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/hei-f/react-type-doc/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/hei-f/react-type-doc/compare/v1.0.0...v1.0.1

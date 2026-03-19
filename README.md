@@ -220,7 +220,19 @@ onSubmit: (key: string, value: unknown) => Promise<boolean>;
 
 ## 🤖 Cursor Skill
 
-如果你使用 [Cursor IDE](https://cursor.sh/)，推荐安装配套的 AI Skill，让 AI 助手能正确辅助你配置、生成和集成类型文档：
+如果你使用 [Cursor IDE](https://cursor.sh/)，推荐安装配套的 AI Skill，让 AI 助手能正确辅助你配置、生成和集成类型文档。
+
+### 使用 Skills CLI 安装（推荐）
+
+```bash
+# 安装 react-type-doc skill
+npx skills add hei-f/react-type-doc --skill react-type-doc
+
+# 安装到全局（所有项目可用）
+npx skills add hei-f/react-type-doc --skill react-type-doc --global
+```
+
+### 手动安装
 
 从本仓库的 [`.cursor/skills/react-type-doc/`](.cursor/skills/react-type-doc/) 目录复制到你的项目中：
 

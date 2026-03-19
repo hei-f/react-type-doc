@@ -23,6 +23,7 @@ export const CACHE_PREFIX_TEXT = 'text:';
 export const CACHE_PREFIX_HASH = 'hash:';
 export const CACHE_PREFIX_ARRAY = 'array:';
 export const CACHE_PREFIX_ANON = 'anon:';
+export const CACHE_PREFIX_LITERAL = 'literal:';
 
 /** 显示文本常量 */
 export const DISPLAY_ANONYMOUS_OBJECT = '[匿名对象]';
@@ -146,6 +147,48 @@ function getCompactObjectSummary(type: Type): string {
   const hasMore = properties.length > ANONYMOUS_OBJECT_PREVIEW_MAX_PROPS;
 
   return `{ ${propNames.join(', ')}${hasMore ? ', ...' : ''} }`;
+}
+
+/**
+ * 从字面量类型文本中提取纯净的值（移除引号）
+ * @param typeText 字面量类型的文本表示
+ * @returns 纯净的字面量值
+ * @example
+ * extractLiteralValue('"hello"') // => 'hello'
+ * extractLiteralValue("'world'") // => 'world'
+ * extractLiteralValue('42') // => '42'
+ */
+export function extractLiteralValue(typeText: string): string {
+  // 检查首尾是否为引号（单引号或双引号）
+  if (
+    (typeText.startsWith('"') && typeText.endsWith('"')) ||
+    (typeText.startsWith("'") && typeText.endsWith("'"))
+  ) {
+    // 移除首尾引号
+    return typeText.slice(1, -1);
+  }
+  // 数字和布尔字面量没有引号，直接返回
+  return typeText;
+}
+
+/**
+ * 获取字面量类型的分类
+ * @param type ts-morph Type 对象
+ * @returns 字面量类型分类，非字面量返回 null
+ */
+export function getLiteralTypeCategory(
+  type: Type,
+): 'string' | 'number' | 'boolean' | null {
+  if (type.isStringLiteral()) {
+    return 'string';
+  }
+  if (type.isNumberLiteral()) {
+    return 'number';
+  }
+  if (type.isBooleanLiteral()) {
+    return 'boolean';
+  }
+  return null;
 }
 
 /**

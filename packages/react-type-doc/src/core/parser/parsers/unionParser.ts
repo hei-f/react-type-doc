@@ -158,8 +158,12 @@ export function simplifyOptionalUnion(typeInfo: TypeInfo): TypeInfo {
         if (ref.startsWith(CACHE_PREFIX_LITERAL)) {
           // literal:string:BasicInfoConfirm → BasicInfoConfirm
           // literal:number:42 → 42
-          const parts = ref.slice(CACHE_PREFIX_LITERAL.length).split(':');
-          return parts.length === 2 ? parts[1] : ref;
+          // literal:string:https://example.com → https://example.com (处理包含冒号的字面量)
+          const content = ref.slice(CACHE_PREFIX_LITERAL.length);
+          const separatorIndex = content.indexOf(':');
+          return separatorIndex !== -1
+            ? content.slice(separatorIndex + 1)
+            : ref;
         }
         return ref;
       }

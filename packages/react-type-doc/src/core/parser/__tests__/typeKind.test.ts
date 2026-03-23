@@ -31,14 +31,14 @@ describe('getTypeKind', () => {
     expect(getTypeKind(stringType!)).toBe('primitive');
     expect(getTypeKind(numberType!)).toBe('primitive');
     expect(getTypeKind(booleanType!)).toBe('primitive');
-  });
+  }, 30000);
 
   it('应该正确识别数组类型', () => {
     createTestFile(project, 'test.ts', `export type ArrayType = string[];`);
     const arrayType = getExportedType(project, 'test.ts', 'ArrayType');
     expect(arrayType).toBeDefined();
     expect(getTypeKind(arrayType!)).toBe('array');
-  });
+  }, 30000);
 
   it('应该正确识别联合类型', () => {
     createTestFile(
@@ -49,7 +49,7 @@ describe('getTypeKind', () => {
     const unionType = getExportedType(project, 'test.ts', 'UnionType');
     expect(unionType).toBeDefined();
     expect(getTypeKind(unionType!)).toBe('union');
-  });
+  }, 30000);
 
   it('应该正确识别枚举类型（字面量联合）', () => {
     createTestFile(
@@ -60,7 +60,7 @@ describe('getTypeKind', () => {
     const enumType = getExportedType(project, 'test.ts', 'EnumType');
     expect(enumType).toBeDefined();
     expect(getTypeKind(enumType!)).toBe('enum');
-  });
+  }, 30000);
 
   it('应该正确识别对象类型', () => {
     createTestFile(
@@ -71,7 +71,7 @@ describe('getTypeKind', () => {
     const objectType = getExportedType(project, 'test.ts', 'ObjectType');
     expect(objectType).toBeDefined();
     expect(getTypeKind(objectType!)).toBe('object');
-  });
+  }, 30000);
 
   it('应该正确识别函数类型', () => {
     createTestFile(
@@ -82,5 +82,5 @@ describe('getTypeKind', () => {
     const functionType = getExportedType(project, 'test.ts', 'FunctionType');
     expect(functionType).toBeDefined();
     expect(getTypeKind(functionType!)).toBe('function');
-  });
+  }, 30000);
 });

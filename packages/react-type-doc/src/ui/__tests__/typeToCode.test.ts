@@ -3,9 +3,14 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { typeInfoToCode, getClickableRanges } from '../typeToCode';
+import {
+  typeInfoToCode,
+  typeInfoToCodeWithMeta,
+  getClickableRanges,
+  simplifyOptionalTupleMemberSyntax,
+} from '../typeToCode';
 import { PropsDocReader } from '../../runtime/reader';
-import type { OutputResult } from '../../shared/types';
+import type { OutputResult, TypeInfo } from '../../shared/types';
 
 describe('typeInfoToCode', () => {
   it('should convert simple object type to interface code', () => {
@@ -19,14 +24,16 @@ describe('typeInfoToCode', () => {
             size: {
               kind: 'union',
               text: '"small" | "large"',
-              types: [
+              unionTypes: [
                 { kind: 'primitive', text: '"small"' },
                 { kind: 'primitive', text: '"large"' },
               ],
+              required: true,
             },
             disabled: {
               kind: 'primitive',
               text: 'boolean',
+              required: true,
             },
           },
         },
@@ -83,7 +90,7 @@ describe('typeInfoToCode', () => {
         Status: {
           kind: 'union',
           text: '"success" | "error" | "loading"',
-          types: [
+          unionTypes: [
             { kind: 'primitive', text: '"success"' },
             { kind: 'primitive', text: '"error"' },
             { kind: 'primitive', text: '"loading"' },
@@ -119,6 +126,7 @@ describe('typeInfoToCode', () => {
                 kind: 'primitive',
                 text: 'string',
               },
+              required: true,
             },
           },
         },
@@ -147,9 +155,10 @@ describe('typeInfoToCode', () => {
               text: '{ id: string; name: string }',
               name: '{ id, name }',
               properties: {
-                id: { kind: 'primitive', text: 'string' },
-                name: { kind: 'primitive', text: 'string' },
+                id: { kind: 'primitive', text: 'string', required: true },
+                name: { kind: 'primitive', text: 'string', required: true },
               },
+              required: true,
             },
           },
         },
@@ -180,6 +189,7 @@ describe('typeInfoToCode', () => {
               kind: 'primitive',
               text: 'string',
               description: 'The name of the component',
+              required: true,
             },
           },
         },
@@ -265,7 +275,7 @@ describe('getClickableRanges', () => {
         Result: {
           kind: 'union',
           text: 'Success | Error',
-          types: [{ $ref: 'Success' }, { $ref: 'Error' }],
+          unionTypes: [{ $ref: 'Success' }, { $ref: 'Error' }],
         },
       },
       typeRegistry: {
@@ -318,5 +328,98 @@ describe('getClickableRanges', () => {
     const ranges = getClickableRanges(code, typeInfo, reader);
 
     expect(ranges).toHaveLength(0);
+  });
+
+  it('should skip inline object roots and inline array elements', () => {
+    const inlineObject: TypeInfo = {
+      kind: 'object',
+      text: '{ id: string; label: string }',
+      properties: {
+        id: { kind: 'primitive', text: 'string', required: true },
+        label: { kind: 'primitive', text: 'string', required: true },
+      },
+    };
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        InlineRoot: inlineObject,
+        InlineList: {
+          kind: 'object',
+          text: 'InlineList',
+          properties: {
+            items: {
+              kind: 'array',
+              text: '{ id: string; label: string }[]',
+              elementType: inlineObject,
+              required: true,
+            },
+          },
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+
+    const inlineRoot = reader.getRaw('InlineRoot')!;
+    const inlineRootCode = typeInfoToCode(inlineRoot, reader, 'InlineRoot');
+    const inlineRootRanges = getClickableRanges(
+      inlineRootCode,
+      inlineRoot,
+      reader,
+    );
+    expect(inlineRootCode).toContain('interface InlineRoot {');
+    expect(inlineRootRanges).toHaveLength(0);
+
+    const inlineList = reader.getRaw('InlineList')!;
+    const inlineListCode = typeInfoToCode(inlineList, reader, 'InlineList');
+    const inlineListRanges = getClickableRanges(
+      inlineListCode,
+      inlineList,
+      reader,
+    );
+    expect(inlineListCode).toContain('items:');
+    expect(inlineListRanges).toHaveLength(0);
+  });
+
+  it('should render named union aliases with meta info', () => {
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        ApiResponse: {
+          kind: 'union',
+          text: 'ApiResponse',
+          name: 'ApiResponse',
+          description: 'Shared response alias',
+          unionTypes: [
+            { kind: 'primitive', text: '"ok"' },
+            { kind: 'primitive', text: '"error"' },
+          ],
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+    const typeInfo = reader.getRaw('ApiResponse')!;
+    const { code, jsdocBlocks } = typeInfoToCodeWithMeta(
+      typeInfo,
+      reader,
+      'ApiResponse',
+    );
+
+    expect(code).toContain('type ApiResponse =');
+    expect(code).toContain('| "ok"');
+    expect(code).toContain('| "error"');
+    expect(jsdocBlocks).toHaveLength(1);
+  });
+
+  it('should simplify tuple optional member syntax', () => {
+    expect(simplifyOptionalTupleMemberSyntax('[(string | undefined)?]')).toBe(
+      '[string?]',
+    );
+    expect(simplifyOptionalTupleMemberSyntax('[(undefined | number)?]')).toBe(
+      '[number?]',
+    );
   });
 });

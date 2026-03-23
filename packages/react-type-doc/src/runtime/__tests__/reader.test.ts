@@ -978,5 +978,40 @@ describe('PropsDocReader', () => {
       // 当 getTypeName 返回空字符串时，使用 typeName.replace('[]', '')
       expect(target!.name).toBe('CustomItem');
     });
+
+    it('getNavigationTarget 数组元素为可展开联合类型时应导航到元素类型', () => {
+      const mockData: OutputResult = {
+        generatedAt: '2024-01-01T00:00:00.000Z',
+        keys: {},
+        typeRegistry: {},
+      };
+
+      const reader = PropsDocReader.create(mockData);
+
+      const arrayType: TypeInfo = {
+        kind: 'array',
+        text: 'DocumentNode[]',
+        elementType: {
+          name: 'DocumentNode',
+          kind: 'union',
+          text: 'DocumentNode',
+          unionTypes: [
+            { kind: 'primitive', text: '"text"' },
+            {
+              kind: 'object',
+              text: '{ row: true }',
+              properties: {
+                row: { kind: 'literal', text: 'true' },
+              },
+            },
+          ],
+        },
+      };
+
+      const target = reader.getNavigationTarget(arrayType, 'DocumentNode[]');
+      expect(target).toBeDefined();
+      expect(target!.typeInfo.kind).toBe('union');
+      expect(target!.name).toBe('DocumentNode');
+    });
   });
 });

@@ -218,6 +218,27 @@ export class PropsDocReader {
   }
 
   /**
+   * 判断是否为匿名对象类型（应该内联展开）
+   * @param typeInfo 要检查的类型
+   * @returns true 表示应该内联展开
+   */
+  private isAnonymousObject(typeInfo: TypeInfo): boolean {
+    const resolved = this.resolveRef(typeInfo);
+
+    if (resolved.kind !== 'object') {
+      return false;
+    }
+
+    if (resolved.renderHint === 'circular' || this.isExternal(typeInfo)) {
+      return false;
+    }
+
+    const name = getTypeName(resolved);
+
+    return name.startsWith('{') || name === 'Object' || name === '[匿名对象]';
+  }
+
+  /**
    * 获取显示用的类型名称
    * 若类型名为 Object 则使用 fallback
    */
@@ -240,12 +261,19 @@ export class PropsDocReader {
   ): { typeInfo: FullTypeInfo; name: string } | null {
     const resolved = this.resolveRef(typeInfo);
 
-    // 如果是数组类型且元素是对象，返回元素类型
+    // 数组：与 UI 一致，可展开时导航到元素类型（对象 / 联合 / 别名联合等）
     if (resolved.kind === 'array' && resolved.elementType) {
       const resolvedElement = this.resolveRef(resolved.elementType);
       if (resolvedElement.kind === 'object' && resolvedElement.properties) {
         const elementName =
-          getTypeName(resolvedElement) || typeName.replace('[]', '');
+          getTypeName(resolvedElement) ||
+          typeName.replace(/\[\]\s*$/, '').trim();
+        return { typeInfo: resolvedElement, name: elementName };
+      }
+      if (this.isExpandable(resolved.elementType)) {
+        const elementName =
+          getTypeName(resolvedElement) ||
+          typeName.replace(/\[\]\s*$/, '').trim();
         return { typeInfo: resolvedElement, name: elementName };
       }
     }
@@ -398,6 +426,13 @@ export class PropsDocReader {
 
       // 对象类型（包括没有属性的泛型对象）
       case 'object': {
+        if (this.isAnonymousObject(typeInfo)) {
+          return {
+            type: RENDER_TYPE.INLINE_OBJECT,
+            resolved,
+          };
+        }
+
         const name = this.getDisplayName(resolved, text);
         return {
           type: RENDER_TYPE.OBJECT,

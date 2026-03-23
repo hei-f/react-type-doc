@@ -574,4 +574,134 @@ describe('PropsDocReader - getTypeRenderInfo', () => {
       expect(renderInfo.type).toBe(RENDER_TYPE.DEFAULT);
     });
   });
+
+  describe('INLINE_OBJECT 匿名对象内联展开', () => {
+    it('应该识别匿名对象（name 以 { 开头）', () => {
+      const mockData: OutputResult = {
+        generatedAt: '2026-03-20',
+        keys: {},
+        typeRegistry: {},
+      };
+      const reader = PropsDocReader.create(mockData);
+      const typeInfo: TypeInfo = {
+        name: '{ id, name, age }',
+        kind: 'object',
+        text: '{ id: string; name: string; age: number; }',
+        properties: {
+          id: { kind: 'primitive', text: 'string' },
+          name: { kind: 'primitive', text: 'string' },
+          age: { kind: 'primitive', text: 'number' },
+        },
+      };
+
+      const renderInfo = reader.getTypeRenderInfo(typeInfo);
+      expect(renderInfo.type).toBe(RENDER_TYPE.INLINE_OBJECT);
+      if (renderInfo.type === RENDER_TYPE.INLINE_OBJECT) {
+        expect(renderInfo.resolved.kind).toBe('object');
+      }
+    });
+
+    it('应该识别 Object 类型的匿名对象', () => {
+      const mockData: OutputResult = {
+        generatedAt: '2026-03-20',
+        keys: {},
+        typeRegistry: {},
+      };
+      const reader = PropsDocReader.create(mockData);
+      const typeInfo: TypeInfo = {
+        name: 'Object',
+        kind: 'object',
+        text: 'Object',
+        properties: {
+          foo: { kind: 'primitive', text: 'string' },
+        },
+      };
+
+      const renderInfo = reader.getTypeRenderInfo(typeInfo);
+      expect(renderInfo.type).toBe(RENDER_TYPE.INLINE_OBJECT);
+    });
+
+    it('应该识别 [匿名对象] 标记', () => {
+      const mockData: OutputResult = {
+        generatedAt: '2026-03-20',
+        keys: {},
+        typeRegistry: {},
+      };
+      const reader = PropsDocReader.create(mockData);
+      const typeInfo: TypeInfo = {
+        name: '[匿名对象]',
+        kind: 'object',
+        text: '{}',
+        properties: {},
+      };
+
+      const renderInfo = reader.getTypeRenderInfo(typeInfo);
+      expect(renderInfo.type).toBe(RENDER_TYPE.INLINE_OBJECT);
+    });
+
+    it('具名对象应该返回 OBJECT 类型', () => {
+      const mockData: OutputResult = {
+        generatedAt: '2026-03-20',
+        keys: {},
+        typeRegistry: {},
+      };
+      const reader = PropsDocReader.create(mockData);
+      const typeInfo: TypeInfo = {
+        name: 'User',
+        kind: 'object',
+        text: 'User',
+        properties: {
+          name: { kind: 'primitive', text: 'string' },
+          age: { kind: 'primitive', text: 'number' },
+        },
+      };
+
+      const renderInfo = reader.getTypeRenderInfo(typeInfo);
+      expect(renderInfo.type).toBe(RENDER_TYPE.OBJECT);
+      if (renderInfo.type === RENDER_TYPE.OBJECT) {
+        expect(renderInfo.name).toBe('User');
+      }
+    });
+
+    it('循环引用的匿名对象应该返回 CIRCULAR', () => {
+      const mockData: OutputResult = {
+        generatedAt: '2026-03-20',
+        keys: {},
+        typeRegistry: {},
+      };
+      const reader = PropsDocReader.create(mockData);
+      const typeInfo: TypeInfo = {
+        name: '{ id, parent }',
+        kind: 'object',
+        text: '{ id: string; parent: TreeNode; }',
+        renderHint: 'circular',
+        properties: {
+          id: { kind: 'primitive', text: 'string' },
+          parent: { $ref: 'TreeNode' },
+        },
+      };
+
+      const renderInfo = reader.getTypeRenderInfo(typeInfo);
+      expect(renderInfo.type).toBe(RENDER_TYPE.CIRCULAR);
+    });
+
+    it('外部库的 Object 类型应该返回 EXTERNAL', () => {
+      const mockData: OutputResult = {
+        generatedAt: '2026-03-20',
+        keys: {},
+        typeRegistry: {},
+      };
+      const reader = PropsDocReader.create(mockData);
+      const typeInfo: TypeInfo = {
+        name: 'Object',
+        kind: 'object',
+        text: 'Object',
+        renderHint: 'builtin',
+        properties: {},
+      };
+
+      const renderInfo = reader.getTypeRenderInfo(typeInfo);
+      expect(renderInfo.type).toBe(RENDER_TYPE.EXTERNAL);
+    });
+  });
 });

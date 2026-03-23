@@ -77,6 +77,44 @@ export function cleanTypeText(text: string): string {
 }
 
 /**
+ * 从类型文本中移除 undefined
+ * @param text 原始类型文本
+ * @returns 移除 undefined 后的类型文本
+ * @example
+ * removeUndefinedFromText('string | undefined') // => 'string'
+ * removeUndefinedFromText('undefined | string') // => 'string'
+ * removeUndefinedFromText('a | undefined | b') // => 'a | b'
+ * removeUndefinedFromText('undefined') // => 'undefined' (保持不变)
+ */
+export function removeUndefinedFromText(text: string): string {
+  const trimmed = text.trim();
+
+  // 如果整个类型就是 undefined，保持不变
+  if (trimmed === 'undefined') {
+    return trimmed;
+  }
+
+  // 移除 | undefined 和 undefined | 的各种情况
+  const result = trimmed
+    // 先移除开头的 undefined |（带空格）
+    .replace(/^undefined\s*\|\s*/g, '')
+    // 移除末尾的 | undefined（带空格）
+    .replace(/\s*\|\s*undefined$/g, '')
+    // 移除中间的 | undefined |（带空格），注意保留 | 连接符
+    .replace(/\s*\|\s*undefined\s*\|/g, ' |')
+    // 清理多余空格，但保留 | 两侧的空格
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // 如果清理后为空（理论上不应该发生，但保险起见）
+  if (!result) {
+    return 'undefined';
+  }
+
+  return result;
+}
+
+/**
  * 构建 name 字段，当 name == text 时返回空对象以省略 name 字段
  * @param name 类型名称
  * @param text 类型文本

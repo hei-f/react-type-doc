@@ -4,7 +4,11 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { extractLiteralValue, getLiteralTypeCategory } from '../helpers';
+import {
+  extractLiteralValue,
+  getLiteralTypeCategory,
+  removeUndefinedFromText,
+} from '../helpers';
 import {
   createTestProject,
   createTestFile,
@@ -180,5 +184,66 @@ describe('helpers - 集成测试', () => {
 
     expect(category).toBe('string');
     expect(value).toBe('MyValue');
+  });
+});
+
+describe('removeUndefinedFromText', () => {
+  it('应该移除类型文本末尾的 | undefined', () => {
+    const result = removeUndefinedFromText('string | undefined');
+    expect(result).toBe('string');
+  });
+
+  it('应该移除类型文本开头的 undefined |', () => {
+    const result = removeUndefinedFromText('undefined | string');
+    expect(result).toBe('string');
+  });
+
+  it('应该移除类型文本中间的 | undefined |', () => {
+    const result = removeUndefinedFromText('a | undefined | b');
+    expect(result).toBe('a | b');
+  });
+
+  it('应该保留单独的 undefined', () => {
+    const result = removeUndefinedFromText('undefined');
+    expect(result).toBe('undefined');
+  });
+
+  it('应该保持不包含 undefined 的文本不变', () => {
+    const result = removeUndefinedFromText('string');
+    expect(result).toBe('string');
+  });
+
+  it('应该处理嵌套对象中的 undefined', () => {
+    // removeUndefinedFromText 只处理顶层的类型文本，不递归处理嵌套结构
+    // 对于 '{ a?: string | undefined }'，它不会改变内部的 '| undefined'
+    // 实际的嵌套处理由 parser 在解析时完成
+    const result = removeUndefinedFromText('{ a?: string | undefined }');
+    expect(result).toBe('{ a?: string | undefined }');
+
+    // 但对于顶层的 undefined，应该能正确移除
+    const topLevel = removeUndefinedFromText('{ a: string } | undefined');
+    expect(topLevel).toBe('{ a: string }');
+  });
+
+  it('应该正确清理多余空格', () => {
+    const result = removeUndefinedFromText('string  |  undefined');
+    expect(result).toBe('string');
+  });
+
+  it('应该处理复杂联合类型', () => {
+    const result = removeUndefinedFromText(
+      '"customer" | "privacy" | "cloud" | undefined',
+    );
+    expect(result).toBe('"customer" | "privacy" | "cloud"');
+  });
+
+  it('应该处理多个undefined的情况', () => {
+    const result = removeUndefinedFromText('undefined | string | undefined');
+    expect(result).toBe('string');
+  });
+
+  it('应该处理带空格的undefined', () => {
+    const result = removeUndefinedFromText('  undefined  |  string  ');
+    expect(result).toBe('string');
   });
 });

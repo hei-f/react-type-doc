@@ -1,6 +1,6 @@
 ---
 name: react-type-doc
-description: Guide for using the react-type-doc library to generate and display TypeScript type documentation for React components. Use when configuring type doc generation, integrating TypeDocPanel UI component, using PropsDocReader runtime API, customizing type rendering, or when the user mentions react-type-doc, type documentation, props documentation, or TypeInfo.
+description: Guide for react-type-doc — generate JSON type docs, PropsDocReader runtime API, TypeDocPanel or TypeDocEditorPanel UI, config, and customization. Use when the user mentions react-type-doc, type documentation, props docs, TypeInfo, or CodeMirror type panel.
 ---
 
 # react-type-doc
@@ -21,7 +21,7 @@ npx react-type-doc            # 生成类型文档 JSON
 |------|------|----------|
 | `react-type-doc` | 运行时 API + 类型 + `defineConfig` | 配置文件、运行时使用 |
 | `react-type-doc/runtime` | 运行时 API（不含 ts-morph） | 前端 bundle |
-| `react-type-doc/ui` | TypeDocPanel + locale | UI 展示（需 react + styled-components） |
+| `react-type-doc/ui` | `TypeDocPanel`、`TypeDocEditorPanel`（可选 lazy）、`en` / `zhCN`、类型 | UI（需 react、styled-components；编辑器面板另需 CodeMirror 等 peer，见 ui-component.md） |
 
 ## 模块指南
 
@@ -31,7 +31,7 @@ npx react-type-doc            # 生成类型文档 JSON
 |------|------|------|
 | 配置 `reactTypeDoc.config.ts` | [config.md](config.md) | registry/scanDirs 注册模式、ParseOptions、输出优化 |
 | 使用运行时 API 自定义渲染 | [runtime-api.md](runtime-api.md) | PropsDocReader 方法、TypeRenderInfo 渲染决策 |
-| 集成内置 UI 组件 | [ui-component.md](ui-component.md) | TypeDocPanel 用法、locale 自定义 |
+| 集成内置 UI 组件 | [ui-component.md](ui-component.md) | 经典面板 / CodeMirror 面板、依赖、共有 Props、locale |
 | 查阅完整类型定义 | [reference.md](reference.md) | TypeInfo/TypeRef、TypeCategory/RenderHint 枚举 |
 
 ## AI 交互协议

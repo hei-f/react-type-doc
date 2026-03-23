@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-03-23
+
+### Added
+
+- `TypeDocEditorPanel` / `TypeDocEditorPanelLazy`：基于 CodeMirror 的只读类型文档视图（语法高亮、折叠等），与 `TypeDocPanel` 共用 `data` + `typeKey` 与导航语义
+- CodeMirror 相关依赖以 optional `peerDependencies` 声明，由使用编辑器面板的应用安装
+
+### Fixed
+
+- 匿名对象内联展开与数组导航相关展示/导航问题
+- 联合类型文本中 `undefined` 的清理与展示
+
+### Changed
+
+- 示例项目更新以展示编辑面板
+- 文档与 Cursor skill：补充 UI 子路径、peer 依赖说明
+
 ## [1.1.3] - 2026-03-19
 
 ### Fixed
@@ -71,6 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 索引签名、元组、重载函数签名等高级类型支持
 - ESM / CommonJS 双格式输出
 
+[1.2.0]: https://github.com/hei-f/react-type-doc/compare/v1.1.3...v1.2.0
 [1.1.3]: https://github.com/hei-f/react-type-doc/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/hei-f/react-type-doc/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/hei-f/react-type-doc/compare/v1.1.0...v1.1.1

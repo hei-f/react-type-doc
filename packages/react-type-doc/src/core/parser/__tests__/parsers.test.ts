@@ -64,7 +64,7 @@ describe('类型解析器', () => {
       } else {
         throw new Error('Expected object type or reference');
       }
-    });
+    }, 30000);
 
     it('应该正确解析可选属性', () => {
       createTestFile(

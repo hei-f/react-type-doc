@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { loader } from '@monaco-editor/react';
 import type { OutputResult } from 'react-type-doc';
 import type { ComponentDoc } from 'react-docgen-typescript';
-import { TypeDocPanel, zhCN } from 'react-type-doc/ui';
+import { TypeDocPanel, TypeDocEditorPanelLazy, zhCN } from 'react-type-doc/ui';
 import ReactDocgenTsViewer from './components/ReactDocgenTsViewer';
 import ComparisonView from './components/ComparisonView';
 import reactTypeDocDataRaw from '../benchmark-output/react-type-doc.json';
@@ -11,9 +11,6 @@ import './App.css';
 
 const reactTypeDocData = reactTypeDocDataRaw as unknown as OutputResult;
 const reactDocgenTsData = reactDocgenTsDataRaw as unknown as ComponentDoc[];
-
-// 预加载 Monaco Editor
-loader.init();
 
 /** 类型分组列表 */
 const TYPE_GROUPS = [
@@ -59,10 +56,22 @@ const TYPE_GROUPS = [
       { key: 'StringArrayWithLength', label: '实例化 - 约束泛型' },
       { key: 'StringGenericComponent', label: '实例化 - 组件 Props<string>' },
       { key: 'StringBoxComponent', label: '实例化组件 - Box<string>' },
-      { key: 'StringNumberPairComponent', label: '实例化组件 - Pair<string, number>' },
-      { key: 'DefaultResponseComponent', label: '实例化组件 - Response 默认参数' },
-      { key: 'UserResponseComponent', label: '实例化组件 - Response<User, Error>' },
-      { key: 'StringArrayWithLengthComponent', label: '实例化组件 - WithLength<string[]>' },
+      {
+        key: 'StringNumberPairComponent',
+        label: '实例化组件 - Pair<string, number>',
+      },
+      {
+        key: 'DefaultResponseComponent',
+        label: '实例化组件 - Response 默认参数',
+      },
+      {
+        key: 'UserResponseComponent',
+        label: '实例化组件 - Response<User, Error>',
+      },
+      {
+        key: 'StringArrayWithLengthComponent',
+        label: '实例化组件 - WithLength<string[]>',
+      },
     ],
   },
   {
@@ -105,22 +114,16 @@ const TYPE_GROUPS = [
 ];
 
 type ViewMode = 'viewer' | 'comparison';
+type PanelMode = 'classic' | 'codeMirror';
 
 function App() {
   const [selectedType, setSelectedType] = useState('ComplexPropsComponent');
   const [viewMode, setViewMode] = useState<ViewMode>('viewer');
+  const [panelMode, setPanelMode] = useState<PanelMode>('classic');
 
-  // 预加载 Monaco Editor
+  // 预加载 Monaco（数据对比等视图仍使用 @monaco-editor/react）
   useEffect(() => {
-    loader.init().then((monaco) => {
-      // Monaco 已加载，可以进行额外配置
-      monaco.editor.defineTheme('custom-light', {
-        base: 'vs',
-        inherit: true,
-        rules: [],
-        colors: {},
-      });
-    });
+    void loader.init();
   }, []);
 
   return (
@@ -165,6 +168,34 @@ function App() {
             >
               🔍 数据对比
             </button>
+            {viewMode === 'viewer' && (
+              <div
+                style={{
+                  marginLeft: 'auto',
+                  display: 'flex',
+                  gap: '8px',
+                  alignItems: 'center',
+                }}
+              >
+                <span style={{ fontSize: '14px', color: '#666' }}>
+                  面板模式：
+                </span>
+                <button
+                  className={`tab-button ${panelMode === 'classic' ? 'active' : ''}`}
+                  onClick={() => setPanelMode('classic')}
+                  style={{ fontSize: '13px', padding: '6px 12px' }}
+                >
+                  🎨 经典面板
+                </button>
+                <button
+                  className={`tab-button ${panelMode === 'codeMirror' ? 'active' : ''}`}
+                  onClick={() => setPanelMode('codeMirror')}
+                  style={{ fontSize: '13px', padding: '6px 12px' }}
+                >
+                  💻 CodeMirror 编辑器
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="view-content">
@@ -172,14 +203,33 @@ function App() {
               <div className="viewer-comparison">
                 <div className="viewer-panel">
                   <div className="viewer-panel-label">
-                    react-type-doc（本工具）
+                    react-type-doc（
+                    {panelMode === 'classic' ? '经典面板' : 'CodeMirror 编辑器'}
+                    ）
                   </div>
-                  <TypeDocPanel
-                    typeKey={selectedType}
-                    titlePrefix="类型"
-                    data={reactTypeDocData}
-                    locale={zhCN}
-                  />
+                  {panelMode === 'classic' ? (
+                    <TypeDocPanel
+                      typeKey={selectedType}
+                      titlePrefix="类型"
+                      data={reactTypeDocData}
+                      locale={zhCN}
+                    />
+                  ) : (
+                    <Suspense
+                      fallback={
+                        <div style={{ padding: '20px', textAlign: 'center' }}>
+                          加载 CodeMirror...
+                        </div>
+                      }
+                    >
+                      <TypeDocEditorPanelLazy
+                        typeKey={selectedType}
+                        titlePrefix="类型"
+                        data={reactTypeDocData}
+                        locale={zhCN}
+                      />
+                    </Suspense>
+                  )}
                 </div>
                 <div className="viewer-panel">
                   <div className="viewer-panel-label">
@@ -207,7 +257,8 @@ function App() {
         <p>
           💡 点击左侧列表切换类型 | 📖 类型查看器：并排对比两个工具的展示效果 |
           🔍 数据对比：查看工具生成的原始 JSON 数据（react-docgen-typescript
-          仅支持组件 Props）
+          仅支持组件 Props）| 🎨/💻 经典面板/CodeMirror
+          编辑器：切换不同的展示模式
         </p>
       </footer>
     </div>

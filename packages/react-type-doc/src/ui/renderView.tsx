@@ -17,6 +17,7 @@ import {
 import type { TypeRenderContext } from './types';
 import { renderTypeText } from './renderType';
 import { renderDescription } from './renderDescription';
+import { RENDER_TYPE } from '../runtime/renderTypes';
 
 /**
  * 渲染联合类型视图
@@ -50,17 +51,27 @@ export function renderUnionTypeView(
 
         {unionTypes.map((unionMember: TypeInfo, idx: number) => {
           const resolvedMember = context.reader.resolveRef(unionMember);
+          const renderInfo = context.reader.getTypeRenderInfo(unionMember);
           const displayName = context.reader.getDisplayName(
             resolvedMember,
             context.locale.unionMember(idx + 1),
           );
           const isExpandable = context.reader.isExpandable(unionMember);
+          const isInlineObject = renderInfo.type === RENDER_TYPE.INLINE_OBJECT;
+
+          const unionContext: TypeRenderContext = {
+            ...context,
+            indentLevel: 1,
+            bracketLevel: 0,
+          };
 
           return (
             <CodeLine key={idx}>
               <Indent $level={1} />
               <Punctuation>| </Punctuation>
-              {isExpandable ? (
+              {isInlineObject ? (
+                renderTypeText(unionMember, unionContext)
+              ) : isExpandable ? (
                 <ClickableTypeName
                   onClick={() => context.onTypeClick(unionMember, displayName)}
                   title={context.locale.clickToViewDetails}
@@ -95,6 +106,7 @@ export function renderPropertyLine(
 
   const contextWithField: TypeRenderContext = {
     ...context,
+    indentLevel,
     onTypeClick: (typeInfo, typeName) =>
       context.onTypeClick(typeInfo, typeName, propName),
   };

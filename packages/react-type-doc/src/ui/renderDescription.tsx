@@ -15,7 +15,8 @@ import type { TypeRenderContext } from './types';
  * 匹配 {@link content} 内联标签和裸 URL
  * 捕获组1: {@link} 内容，捕获组2: 裸 URL
  */
-const INLINE_LINK_PATTERN = /\{@link\s+([^}]+)\}|(https?:\/\/\S+)/g;
+export const JSDOC_INLINE_LINK_PATTERN =
+  /\{@link\s+([^}]+)\}|(https?:\/\/\S+)/g;
 
 /**
  * 在 reader 的注册数据中查找 {@link} 引用的类型
@@ -52,7 +53,7 @@ function findTypeByLinkRef(
  * 优先通过解析阶段 ts-morph 预计算的 registry key 直接查找（O(1)）
  * 找不到时回退到运行时遍历搜索
  */
-function resolveTypeLink(
+export function resolveJSDocTypeLink(
   target: string,
   reader: PropsDocReader,
   descriptionLinks?: Record<string, string>,
@@ -91,7 +92,7 @@ export function parseDescriptionLine(
     remaining = remaining.slice(blockTagMatch[1].length);
   }
 
-  const regex = new RegExp(INLINE_LINK_PATTERN.source, 'g');
+  const regex = new RegExp(JSDOC_INLINE_LINK_PATTERN.source, 'g');
   let lastIdx = 0;
   let match: RegExpExecArray | null;
 
@@ -121,7 +122,11 @@ export function parseDescriptionLine(
           </JsDocLink>,
         );
       } else if (context) {
-        const found = resolveTypeLink(target, context.reader, descriptionLinks);
+        const found = resolveJSDocTypeLink(
+          target,
+          context.reader,
+          descriptionLinks,
+        );
         if (found) {
           parts.push(
             <ClickableTypeName

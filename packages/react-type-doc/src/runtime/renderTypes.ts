@@ -25,6 +25,8 @@ export const RENDER_TYPE = {
   TUPLE: 'tuple',
   /** 对象类型 */
   OBJECT: 'object',
+  /** 内联展开的匿名对象类型 */
+  INLINE_OBJECT: 'inlineObject',
   /** 可展开的自定义类型 */
   CUSTOM_EXPANDABLE: 'customExpandable',
   /** 函数类型 */
@@ -71,6 +73,10 @@ export type TypeRenderInfo =
       type: typeof RENDER_TYPE.OBJECT;
       name: string;
       expandable: boolean;
+      resolved: FullTypeInfo;
+    }
+  | {
+      type: typeof RENDER_TYPE.INLINE_OBJECT;
       resolved: FullTypeInfo;
     }
   | {

@@ -27,7 +27,18 @@ export default defineConfig([
     sourcemap: true,
     splitting: false,
     treeshake: true,
-    external: ['react', 'react-dom', 'styled-components'],
+    external: [
+      'react',
+      'react-dom',
+      'styled-components',
+      '@uiw/react-codemirror',
+      '@codemirror/view',
+      '@codemirror/state',
+      '@codemirror/lang-javascript',
+      '@codemirror/language',
+      '@codemirror/theme-one-dark',
+      '@replit/codemirror-indentation-markers',
+    ],
   },
   // CLI 入口（单独配置，需要 shebang）
   {

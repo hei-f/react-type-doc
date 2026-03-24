@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { parseTypeInfo, clearTypeCache, initParseOptions } from '..';
+import {
+  parseTypeInfo,
+  clearTypeCache,
+  initParseOptions,
+  getTypeCacheSnapshot,
+} from '..';
 import {
   createTestProject,
   createTestFile,
@@ -392,6 +397,243 @@ describe('集成测试', () => {
       const typeInfo = parseTypeInfo(type!);
 
       expect(typeInfo).toBeDefined();
+    });
+  });
+
+  describe('真实场景 - CrowdSelectionCard Props', () => {
+    it('应该正确解析可选对象属性，text 不包含 undefined', () => {
+      clearTypeCache();
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type CrowdSelectionCardDidDrawerProps = {
+          initialSubTabProps?: {
+            activeKey?: 'customer' | 'privacy' | 'cloud';
+            instMorseId?: string;
+          };
+        };
+      `,
+      );
+
+      const type = getExportedType(
+        project,
+        'test.ts',
+        'CrowdSelectionCardDidDrawerProps',
+      );
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+
+      // 递归检查所有 TypeInfo 的 text 字段
+      function checkNoUndefinedInText(info: any, path: string = 'root'): void {
+        if (!info) return;
+
+        // 检查当前层级的 text
+        if ('text' in info && typeof info.text === 'string') {
+          expect(info.text).not.toContain('| undefined');
+          expect(info.text).not.toContain('undefined |');
+        }
+
+        // 递归检查 properties
+        if ('properties' in info && info.properties) {
+          Object.entries(info.properties).forEach(([key, value]) => {
+            checkNoUndefinedInText(value, `${path}.properties.${key}`);
+          });
+        }
+
+        // 递归检查 unionTypes
+        if ('unionTypes' in info && Array.isArray(info.unionTypes)) {
+          info.unionTypes.forEach((t: any, index: number) => {
+            checkNoUndefinedInText(t, `${path}.unionTypes[${index}]`);
+          });
+        }
+
+        // 递归检查 elementType
+        if ('elementType' in info && info.elementType) {
+          checkNoUndefinedInText(info.elementType, `${path}.elementType`);
+        }
+      }
+
+      checkNoUndefinedInText(typeInfo);
+    });
+
+    it('应该为可选属性设置 required: false 或不设置 required 字段', () => {
+      clearTypeCache();
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type TestProps = {
+          optional?: string;
+          required: string;
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'TestProps');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if (
+        'kind' in typeInfo &&
+        typeInfo.kind === 'object' &&
+        'properties' in typeInfo &&
+        typeInfo.properties
+      ) {
+        const optionalProp = typeInfo.properties.optional;
+        const requiredProp = typeInfo.properties.required;
+
+        // 可选属性不应该有 required: true
+        if (optionalProp && 'required' in optionalProp) {
+          expect(optionalProp.required).not.toBe(true);
+        }
+
+        // 必填属性应该有 required: true
+        expect(requiredProp).toBeDefined();
+        if (requiredProp && 'required' in requiredProp) {
+          expect(requiredProp.required).toBe(true);
+        }
+      }
+    });
+
+    it('应该生成不包含 undefined 的缓存 key', () => {
+      clearTypeCache();
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type Status = 'active' | 'inactive' | undefined;
+        export type Config = {
+          status: Status;
+        };
+      `,
+      );
+
+      const statusType = getExportedType(project, 'test.ts', 'Status');
+      parseTypeInfo(statusType!);
+
+      const configType = getExportedType(project, 'test.ts', 'Config');
+      parseTypeInfo(configType!);
+
+      const cacheSnapshot = getTypeCacheSnapshot();
+      const cacheKeys = Object.keys(cacheSnapshot);
+
+      // 检查所有缓存 key 是否包含 undefined
+      cacheKeys.forEach((key) => {
+        // 允许 primitive:undefined 这样的 key（这是正常的 undefined 类型）
+        if (key === 'primitive:undefined') {
+          return;
+        }
+
+        // 其他 key 不应该包含 | undefined 模式
+        expect(key).not.toMatch(/\|\s*undefined/);
+        expect(key).not.toMatch(/undefined\s*\|/);
+      });
+    });
+
+    it('应该确保 $ref 引用的类型 text 不包含 undefined', () => {
+      clearTypeCache();
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type OptionalField = string | undefined;
+        export type Container = {
+          field: OptionalField;
+        };
+      `,
+      );
+
+      const containerType = getExportedType(project, 'test.ts', 'Container');
+      const containerInfo = parseTypeInfo(containerType!);
+
+      expect(containerInfo).toBeDefined();
+      if (
+        'kind' in containerInfo &&
+        containerInfo.kind === 'object' &&
+        'properties' in containerInfo &&
+        containerInfo.properties
+      ) {
+        const fieldProp = containerInfo.properties.field;
+        expect(fieldProp).toBeDefined();
+
+        // 如果是引用，检查引用的类型
+        if (fieldProp && '$ref' in fieldProp) {
+          const cacheSnapshot = getTypeCacheSnapshot();
+          const referencedType = cacheSnapshot[fieldProp.$ref];
+
+          expect(referencedType).toBeDefined();
+          if (referencedType && 'text' in referencedType) {
+            expect(referencedType.text).not.toContain('undefined');
+            expect(referencedType.text).toBe('string');
+          }
+        } else if (fieldProp && 'text' in fieldProp) {
+          // 如果是内联类型，直接检查 text
+          expect(fieldProp.text).not.toContain('undefined');
+        }
+      }
+    });
+
+    it('应该处理复杂嵌套结构中的 undefined', () => {
+      clearTypeCache();
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type ComplexNested = {
+          level1?: {
+            level2?: {
+              status?: 'active' | 'inactive' | undefined;
+              values?: (string | undefined)[];
+            } | undefined;
+          };
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'ComplexNested');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+
+      // 递归检查所有层级的联合类型
+      function recursiveCheckUnionTypes(
+        info: any,
+        path: string = 'root',
+      ): void {
+        if (!info) return;
+
+        // 对于联合类型，检查其 text 字段
+        if ('kind' in info && info.kind === 'union' && 'text' in info) {
+          // 联合类型的 text 不应包含 | undefined
+          if (typeof info.text === 'string') {
+            expect(info.text).not.toMatch(/\|\s*undefined/);
+            expect(info.text).not.toMatch(/undefined\s*\|/);
+          }
+        }
+
+        // 递归检查 properties
+        if ('properties' in info && info.properties) {
+          Object.entries(info.properties).forEach(([key, value]) => {
+            recursiveCheckUnionTypes(value, `${path}.properties.${key}`);
+          });
+        }
+
+        // 递归检查 unionTypes
+        if ('unionTypes' in info && Array.isArray(info.unionTypes)) {
+          info.unionTypes.forEach((t: any, index: number) => {
+            recursiveCheckUnionTypes(t, `${path}.unionTypes[${index}]`);
+          });
+        }
+
+        // 递归检查 elementType
+        if ('elementType' in info && info.elementType) {
+          recursiveCheckUnionTypes(info.elementType, `${path}.elementType`);
+        }
+      }
+
+      recursiveCheckUnionTypes(typeInfo);
     });
   });
 });

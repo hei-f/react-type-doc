@@ -11,6 +11,7 @@ import {
   CACHE_PREFIX_PRIMITIVE,
   CACHE_PREFIX_TEXT,
   CACHE_PREFIX_LITERAL,
+  removeUndefinedFromText,
 } from '../utils/helpers';
 
 /**
@@ -85,9 +86,18 @@ export function simplifyOptionalUnion(typeInfo: TypeInfo): TypeInfo {
     return typeInfo;
   }
 
-  // 如果只剩一个类型，直接返回该类型
+  // 如果只剩一个类型，检查并清理 text 中的 undefined
   if (filtered.length === 1 && filtered[0]) {
-    return filtered[0];
+    const singleType = filtered[0];
+    // 如果不是引用类型且 text 包含 | undefined，清理 text
+    if (!isTypeRef(singleType) && singleType.text.includes('undefined')) {
+      const cleanedText = removeUndefinedFromText(singleType.text);
+      // 只有当清理后 text 发生变化时才返回新对象
+      if (cleanedText !== singleType.text) {
+        return { ...singleType, text: cleanedText };
+      }
+    }
+    return singleType;
   }
 
   // 如果过滤后数量没变，说明原本就没有 undefined，直接返回
@@ -158,17 +168,25 @@ export function simplifyOptionalUnion(typeInfo: TypeInfo): TypeInfo {
         if (ref.startsWith(CACHE_PREFIX_LITERAL)) {
           // literal:string:BasicInfoConfirm → BasicInfoConfirm
           // literal:number:42 → 42
-          const parts = ref.slice(CACHE_PREFIX_LITERAL.length).split(':');
-          return parts.length === 2 ? parts[1] : ref;
+          // literal:string:https://example.com → https://example.com (处理包含冒号的字面量)
+          const content = ref.slice(CACHE_PREFIX_LITERAL.length);
+          const separatorIndex = content.indexOf(':');
+          return separatorIndex !== -1
+            ? content.slice(separatorIndex + 1)
+            : ref;
         }
         return ref;
       }
       return t.text;
     })
     .join(' | ');
+
+  // 额外清理 newText 中可能残留的 undefined
+  const cleanedText = removeUndefinedFromText(newText);
+
   return {
     ...typeInfo,
-    text: newText,
+    text: cleanedText,
     unionTypes: filtered,
   };
 }

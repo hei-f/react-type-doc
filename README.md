@@ -342,7 +342,7 @@ npx react-type-doc
 
 #### 内置 UI 组件
 
-库提供了开箱即用的交互式类型文档面板，支持类型点击展开、面包屑导航、循环引用处理，内置中英文 i18n：
+提供 **`TypeDocPanel`**（结构化 DOM）与 **`TypeDocEditorPanel`** / **`TypeDocEditorPanelLazy`**（只读 CodeMirror）；共用同一 `data` + `typeKey` 与导航语义。导出 `en`、`zhCN` 等 locale。
 
 ```tsx
 import { TypeDocPanel, zhCN } from 'react-type-doc/ui';
@@ -359,7 +359,7 @@ function App() {
 }
 ```
 
-> 内置组件依赖 `styled-components`，需要单独安装。
+**依赖**：`react`、`react-dom`、`styled-components` 为 peer，须在应用中安装。使用 **CodeMirror 面板**时还需安装 `@uiw/react-codemirror` 与各 `@codemirror/*` 等（见包内 `peerDependencies` / `peerDependenciesMeta`，均为 optional peer，由应用解析）。详情见 [`packages/react-type-doc/README.md`](packages/react-type-doc/README.md)。
 
 #### 自定义渲染
 

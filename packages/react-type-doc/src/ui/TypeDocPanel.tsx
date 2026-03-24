@@ -54,6 +54,15 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
     navigateToLevel,
   } = useTypeNavigation(typeKey, titlePrefix, data, locale);
 
+  // 括号点击状态管理
+  const [clickedBracketId, setClickedBracketId] = React.useState<string | null>(
+    null,
+  );
+
+  const handleBracketClick = React.useCallback((bracketId: string) => {
+    setClickedBracketId((prev) => (prev === bracketId ? null : bracketId));
+  }, []);
+
   if (!data || !reader) {
     return (
       <TypeDocPanelContainer>
@@ -86,6 +95,8 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
     onTypeClick: handleTypeClick,
     reader,
     locale,
+    onBracketClick: handleBracketClick,
+    clickedBracketId,
   };
 
   if (resolved.kind === 'union' && !isInNestedView) {
@@ -112,7 +123,9 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
     return (
       <TypeDocPanelContainer>
         <PanelHeader>
-          <PanelTitle title={`${rootDisplayTitle} — ${locale.propertiesCount(0)}`}>
+          <PanelTitle
+            title={`${rootDisplayTitle} — ${locale.propertiesCount(0)}`}
+          >
             {rootDisplayTitle} — {locale.propertiesCount(0)}
           </PanelTitle>
         </PanelHeader>

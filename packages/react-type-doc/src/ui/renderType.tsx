@@ -2,6 +2,7 @@ import type {
   FunctionParameter,
   FunctionSignature,
   TypeInfo,
+  FullTypeInfo,
 } from '../shared/types';
 import { RENDER_TYPE } from '../runtime/renderTypes';
 import type { TypeRenderInfo } from '../runtime/renderTypes';
@@ -9,6 +10,7 @@ import React from 'react';
 import {
   ClickableTypeName,
   GenericParams,
+  Indent,
   OptionalMark,
   PropertyName,
   Punctuation,
@@ -16,6 +18,8 @@ import {
   TypeName,
 } from './styled';
 import type { TypeRenderContext } from './types';
+import { renderPropertyLine } from './renderView';
+import { simplifyOptionalTupleMemberSyntax } from './typeToCode';
 
 /**
  * 将类型名拆分为基础名和泛型参数部分，分别用不同样式渲染。
@@ -44,6 +48,32 @@ export function renderTypeNameWithGenerics(name: string): React.ReactNode {
 export function getBaseName(name: string): string {
   const angleIdx = name.indexOf('<');
   return angleIdx === -1 ? name : name.slice(0, angleIdx);
+}
+
+/**
+ * 元组是否应以 typeInfo.text 整段展示。
+ * 逐项渲染 tupleElements 会丢失：可选元素 `?`、rest `...`、具名元组 `x:` 等源码信息。
+ */
+function tupleShouldRenderAsFullText(tupleDisplayText: string): boolean {
+  const trimmed = tupleDisplayText.trim();
+  if (
+    trimmed.length < 2 ||
+    !trimmed.startsWith('[') ||
+    !trimmed.endsWith(']')
+  ) {
+    return false;
+  }
+  const body = trimmed.slice(1, -1).trim();
+  if (body.length === 0) {
+    return false;
+  }
+  if (/\?/.test(body) || /\.\.\./.test(body)) {
+    return true;
+  }
+  if (/\w+\s*:/.test(body)) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -115,6 +145,121 @@ function renderFunctionType(
 }
 
 /**
+ * 渲染内联展开的匿名对象类型
+ * 支持递归嵌套（属性也可能是匿名对象）
+ */
+function InlineObjectType({
+  typeInfo,
+  context,
+}: {
+  typeInfo: FullTypeInfo;
+  context: TypeRenderContext;
+}): React.ReactElement {
+  const { reader } = context;
+  const propEntries = reader.getPropertyEntries(typeInfo);
+  const currentIndent = context.indentLevel ?? 0;
+  const currentBracketLevel = context.bracketLevel ?? 0;
+
+  // 生成唯一括号 ID（使用括号层级和类型文本）
+  const bracketId = `bracket-${currentBracketLevel}-${typeInfo.text?.substring(0, 20) ?? 'obj'}`;
+  const isHighlighted = context.clickedBracketId === bracketId;
+
+  // 括号点击处理
+  const handleBracketClick = () => {
+    context.onBracketClick?.(bracketId);
+  };
+
+  if (propEntries.length === 0) {
+    return (
+      <>
+        <Punctuation
+          $bracketLevel={currentBracketLevel}
+          $clickable={true}
+          $highlighted={isHighlighted}
+          onClick={handleBracketClick}
+        >
+          {'{'}
+        </Punctuation>
+        <Punctuation
+          $bracketLevel={currentBracketLevel}
+          $clickable={true}
+          $highlighted={isHighlighted}
+          onClick={handleBracketClick}
+        >
+          {'}'}
+        </Punctuation>
+      </>
+    );
+  }
+
+  const hasIndexSignature = propEntries.some(([key]) => key.startsWith('['));
+
+  if (hasIndexSignature && propEntries.length === 1) {
+    const [key, valueType] = propEntries[0]!;
+    return (
+      <>
+        <Punctuation
+          $bracketLevel={currentBracketLevel}
+          $clickable={true}
+          $highlighted={isHighlighted}
+          onClick={handleBracketClick}
+        >
+          {'{ '}
+        </Punctuation>
+        <PropertyName>{key}</PropertyName>
+        <Punctuation>: </Punctuation>
+        {renderTypeText(valueType, context)}
+        <Punctuation
+          $bracketLevel={currentBracketLevel}
+          $clickable={true}
+          $highlighted={isHighlighted}
+          onClick={handleBracketClick}
+        >
+          {' }'}
+        </Punctuation>
+      </>
+    );
+  }
+
+  const nestedContext: TypeRenderContext = {
+    ...context,
+    indentLevel: currentIndent + 1,
+    bracketLevel: currentBracketLevel + 1,
+  };
+
+  return (
+    <>
+      <Punctuation
+        $bracketLevel={currentBracketLevel}
+        $clickable={true}
+        $highlighted={isHighlighted}
+        onClick={handleBracketClick}
+      >
+        {'{'}
+      </Punctuation>
+      <br />
+      {propEntries.map(([propName, propInfo]) =>
+        renderPropertyLine(
+          propName,
+          propInfo,
+          nestedContext,
+          currentIndent + 1,
+        ),
+      )}
+      <Indent $level={currentIndent} />
+      <Punctuation
+        $bracketLevel={currentBracketLevel}
+        $clickable={true}
+        $highlighted={isHighlighted}
+        onClick={handleBracketClick}
+      >
+        {'}'}
+      </Punctuation>
+    </>
+  );
+}
+
+/**
  * 渲染类型文本
  */
 export function renderTypeText(
@@ -176,15 +321,20 @@ export function renderTypeText(
       );
 
     case RENDER_TYPE.TUPLE: {
-      if (
+      const raw = simplifyOptionalTupleMemberSyntax(
+        renderInfo.text?.trim() ?? '[]',
+      );
+      const useElements =
         renderInfo.type === RENDER_TYPE.TUPLE &&
         renderInfo.elements &&
-        renderInfo.elements.length > 0
-      ) {
+        renderInfo.elements.length > 0 &&
+        !tupleShouldRenderAsFullText(raw);
+
+      if (useElements) {
         return (
           <>
             <Punctuation>[</Punctuation>
-            {renderInfo.elements.map((element: TypeInfo, idx: number) => (
+            {renderInfo.elements!.map((element: TypeInfo, idx: number) => (
               <React.Fragment key={idx}>
                 {idx > 0 && <Punctuation>, </Punctuation>}
                 {renderTypeText(element, context)}
@@ -194,7 +344,19 @@ export function renderTypeText(
           </>
         );
       }
-      return <TypeName>{renderInfo.text}</TypeName>;
+
+      if (raw.length >= 2 && raw.startsWith('[') && raw.endsWith(']')) {
+        const inner = raw.slice(1, -1);
+        return (
+          <>
+            <Punctuation>[</Punctuation>
+            <TypeName>{inner}</TypeName>
+            <Punctuation>]</Punctuation>
+          </>
+        );
+      }
+
+      return <TypeName>{raw}</TypeName>;
     }
 
     case RENDER_TYPE.OBJECT: {
@@ -228,6 +390,11 @@ export function renderTypeText(
 
       return <TypeName>{renderInfo.name}</TypeName>;
     }
+
+    case RENDER_TYPE.INLINE_OBJECT:
+      return (
+        <InlineObjectType typeInfo={renderInfo.resolved} context={context} />
+      );
 
     case RENDER_TYPE.CUSTOM_EXPANDABLE:
       return (

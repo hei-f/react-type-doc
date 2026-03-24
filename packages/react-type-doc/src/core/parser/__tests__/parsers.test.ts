@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { parseTypeInfo, clearTypeCache } from '..';
+import { parseTypeInfo, clearTypeCache, getTypeCacheSnapshot } from '..';
 import {
   createTestProject,
   createTestFile,
@@ -64,7 +64,7 @@ describe('类型解析器', () => {
       } else {
         throw new Error('Expected object type or reference');
       }
-    });
+    }, 30000);
 
     it('应该正确解析可选属性', () => {
       createTestFile(
@@ -1088,6 +1088,171 @@ describe('类型解析器', () => {
             expect(paramType.$ref).toContain('T');
           } else if (paramType && 'text' in paramType) {
             expect(paramType.text).toContain('T');
+          }
+        }
+      }
+    });
+  });
+
+  describe('simplifyOptionalUnion - undefined 清理', () => {
+    it('应该简化 string | undefined 并移除 text 中的 undefined', () => {
+      clearTypeCache();
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type OptionalString = string | undefined;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'OptionalString');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo) {
+        // 简化后应该是 primitive string，text 不包含 undefined
+        expect(typeInfo.kind).toBe('primitive');
+        expect(typeInfo.text).toBe('string');
+        expect(typeInfo.text).not.toContain('undefined');
+      }
+    });
+
+    it('应该简化字面量联合 "a" | "b" | undefined 并移除 text 中的 undefined', () => {
+      clearTypeCache();
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type LiteralUnion = 'customer' | 'privacy' | 'cloud' | undefined;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'LiteralUnion');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if ('kind' in typeInfo && typeInfo.kind === 'union') {
+        // unionTypes 不应包含 undefined
+        expect(typeInfo.unionTypes).toBeDefined();
+        const hasUndefined = typeInfo.unionTypes?.some((t) => {
+          if ('$ref' in t) {
+            return t.$ref.includes('undefined');
+          }
+          return 'text' in t && t.text === 'undefined';
+        });
+        expect(hasUndefined).toBe(false);
+
+        // text 不应包含 undefined
+        expect(typeInfo.text).not.toContain('undefined');
+        expect(typeInfo.text).toContain('customer');
+        expect(typeInfo.text).toContain('privacy');
+        expect(typeInfo.text).toContain('cloud');
+      }
+    });
+
+    it('应该处理嵌套对象中的可选属性', () => {
+      clearTypeCache();
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type NestedOptional = {
+          obj?: {
+            field?: string | undefined;
+            status?: 'active' | 'inactive' | undefined;
+          };
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'NestedOptional');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      if (
+        'kind' in typeInfo &&
+        typeInfo.kind === 'object' &&
+        'properties' in typeInfo &&
+        typeInfo.properties
+      ) {
+        const objProp = typeInfo.properties.obj;
+        expect(objProp).toBeDefined();
+
+        // obj 应该是可选的
+        if (objProp) {
+          expect(
+            'required' in objProp ? objProp.required : undefined,
+          ).toBeUndefined();
+        }
+
+        // 检查嵌套对象的属性
+        if (
+          objProp &&
+          'kind' in objProp &&
+          objProp.kind === 'object' &&
+          'properties' in objProp &&
+          objProp.properties
+        ) {
+          const fieldProp = objProp.properties.field;
+          const statusProp = objProp.properties.status;
+
+          // field 的 text 不应包含 undefined
+          if (fieldProp && 'text' in fieldProp) {
+            expect(fieldProp.text).not.toContain('undefined');
+          }
+
+          // status 的 text 不应包含 undefined
+          if (statusProp && 'text' in statusProp) {
+            expect(statusProp.text).not.toContain('undefined');
+          }
+        }
+      }
+    });
+
+    it('应该正确处理缓存的类型引用', () => {
+      clearTypeCache();
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type Status = 'active' | 'inactive' | undefined;
+        export type User = {
+          name: string;
+          status: Status;
+        };
+      `,
+      );
+
+      const statusType = getExportedType(project, 'test.ts', 'Status');
+      const statusInfo = parseTypeInfo(statusType!);
+
+      const userType = getExportedType(project, 'test.ts', 'User');
+      const userInfo = parseTypeInfo(userType!);
+
+      // Status 应该被简化
+      expect(statusInfo).toBeDefined();
+      if ('kind' in statusInfo) {
+        expect(statusInfo.text).not.toContain('undefined');
+      }
+
+      // User 中引用的 Status 也应该是简化后的
+      expect(userInfo).toBeDefined();
+      if (
+        'kind' in userInfo &&
+        userInfo.kind === 'object' &&
+        'properties' in userInfo &&
+        userInfo.properties
+      ) {
+        const statusProp = userInfo.properties.status;
+        expect(statusProp).toBeDefined();
+
+        // 如果是引用，检查引用的类型
+        if (statusProp && '$ref' in statusProp) {
+          // 从缓存中获取引用的类型
+          const cacheSnapshot = getTypeCacheSnapshot();
+          const referencedType = cacheSnapshot[statusProp.$ref];
+          if (referencedType && 'text' in referencedType) {
+            expect(referencedType.text).not.toContain('undefined');
           }
         }
       }

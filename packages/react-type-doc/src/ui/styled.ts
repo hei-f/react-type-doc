@@ -1,4 +1,16 @@
 import styled from 'styled-components';
+import {
+  BRACKET_PAIR_HIGHLIGHT_COLORS,
+  EDITOR_BREADCRUMB_LINK,
+  EDITOR_BREADCRUMB_LINK_HOVER,
+  EDITOR_BREADCRUMB_LINK_HOVER_BG,
+  EDITOR_BREADCRUMB_LINK_UNDERLINE,
+  PANEL_THEME_CLICKABLE_LINK_COLOR,
+  PANEL_THEME_JS_DOC_TAG_COLOR,
+  PANEL_THEME_JS_DOC_URL_COLOR,
+  PANEL_THEME_LINK_HOVER_COLOR,
+  PANEL_THEME_TYPE_NAME_COLOR,
+} from './panelThemeColors';
 
 /** 代码编辑器配色 (One Dark Pro) */
 const THEME = {
@@ -13,7 +25,7 @@ const THEME = {
   /** 关键字颜色，如 interface、type (Keyword) */
   keyword: '#c678dd',
   /** 类型名颜色，如 string、number、boolean (TypeName, JsDocTypeRef) */
-  type: '#e5c07b',
+  type: PANEL_THEME_TYPE_NAME_COLOR,
   /** 属性名颜色 (PropertyName) */
   property: '#e06c75',
   /** 函数类型属性名颜色 (FunctionPropertyName) */
@@ -27,17 +39,17 @@ const THEME = {
   /** 注释文字颜色 (Comment, EmptyState) */
   comment: '#5c6370',
   /** 可点击类型链接颜色 (ClickableTypeName) */
-  link: '#39c5bb',
+  link: PANEL_THEME_CLICKABLE_LINK_COLOR,
   /** 链接悬停时颜色 (ClickableTypeName:hover, JsDocLink:hover) */
-  linkHover: '#e5c07b',
+  linkHover: PANEL_THEME_LINK_HOVER_COLOR,
   /** 可选标记 ? 的颜色 (OptionalMark) */
   optional: '#abb2bf',
   /** 泛型参数颜色，如 <T = unknown> (GenericParams) */
-  generic: '#e5c07b',
+  generic: PANEL_THEME_TYPE_NAME_COLOR,
   /** JSDoc 标签颜色，如 @param、@returns (JsDocTag) */
-  jsDocTag: '#c678dd',
+  jsDocTag: PANEL_THEME_JS_DOC_TAG_COLOR,
   /** JSDoc 内联链接 URL 颜色 (JsDocLink) */
-  jsDocLink: '#61afef',
+  jsDocLink: PANEL_THEME_JS_DOC_URL_COLOR,
 };
 
 /** 类型文档面板容器 */
@@ -76,6 +88,7 @@ export const PanelTitle = styled.span`
 /** 代码区域容器 */
 export const CodeContainer = styled.div`
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   font-family: 'Monaco', 'Menlo', 'Consolas', 'Fira Code', monospace;
   font-size: 13px;
@@ -116,15 +129,64 @@ export const CodeLine = styled.div`
   margin: 0 -16px;
   padding: 0 16px;
 
-  &:hover {
+  /* 只在直接 hover 且子元素未 hover 时高亮 */
+  &:hover:not(:has(*:hover)) {
     background: #2c313c;
   }
 `;
 
 /** 缩进 */
-export const Indent = styled.span<{ $level: number }>`
+export const Indent = styled.span<{
+  $level: number;
+  $showGuides?: boolean;
+  $isLast?: boolean;
+}>`
   display: inline-block;
   width: ${(props) => props.$level * 20}px;
+  position: relative;
+  min-height: 21px;
+
+  /* 使用 background 绘制垂直细线 */
+  ${(props) => {
+    if (!props.$showGuides || props.$level === 0) return '';
+
+    const lines: string[] = [];
+
+    // 前 N-1 条完整线
+    for (let i = 0; i < props.$level - 1; i++) {
+      const xPos = i * 20 + 8;
+      lines.push(
+        `linear-gradient(#3b4048, #3b4048) ${xPos}px 0 / 1px 100% no-repeat`,
+      );
+    }
+
+    // 最后一条线（可能是半高）
+    const lastXPos = (props.$level - 1) * 20 + 8;
+    const lastLineHeight = props.$isLast ? '50%' : '100%';
+    lines.push(
+      `linear-gradient(#3b4048, #3b4048) ${lastXPos}px 0 / 1px ${lastLineHeight} no-repeat`,
+    );
+
+    return `background: ${lines.join(', ')};`;
+  }}
+
+  /* 圆点节点 */
+  &::after {
+    ${(props) =>
+      props.$showGuides &&
+      props.$level > 0 &&
+      `
+      content: '';
+      position: absolute;
+      left: ${(props.$level - 1) * 20 + 6}px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #3b4048;
+    `}
+  }
 `;
 
 /** 关键字 (interface, type) */
@@ -175,8 +237,46 @@ export const NumberLiteral = styled.span`
 `;
 
 /** 标点符号 */
-export const Punctuation = styled.span`
-  color: ${THEME.punctuation};
+export const Punctuation = styled.span<{
+  $bracketLevel?: number;
+  $clickable?: boolean;
+  $highlighted?: boolean;
+}>`
+  color: ${(props) =>
+    props.$bracketLevel !== undefined
+      ? BRACKET_PAIR_HIGHLIGHT_COLORS[props.$bracketLevel % 4]
+      : THEME.punctuation};
+  cursor: ${(props) => (props.$clickable ? 'pointer' : 'default')};
+  transition: background 0.15s ease;
+
+  ${(props) =>
+    props.$clickable &&
+    `
+    padding: 0 2px;
+    margin: 0 -2px;
+    border-radius: 2px;
+    
+    &:hover {
+      background: rgba(97, 175, 239, 0.15);
+    }
+  `}
+
+  ${(props) =>
+    props.$highlighted &&
+    `
+    background: rgba(97, 175, 239, 0.35);
+    animation: bracketPulse 0.3s ease;
+  `}
+  
+  @keyframes bracketPulse {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+  }
 `;
 
 /** 注释 */
@@ -260,17 +360,33 @@ export const BreadcrumbContainer = styled.div`
   }
 `;
 
-/** 面包屑项 */
-export const BreadcrumbItem = styled.span<{ $clickable?: boolean }>`
-  color: ${(props) => (props.$clickable ? '#61afef' : '#abb2bf')};
+/** 面包屑项（与 CodeMirror 面板顶栏一致：柔和链接 + 细底边；flex-shrink:0 保证窄列时横向滚动而非挤压省略） */
+export const BreadcrumbItem = styled.span<{
+  $clickable?: boolean;
+}>`
+  flex-shrink: 0;
+  color: ${(props) => (props.$clickable ? EDITOR_BREADCRUMB_LINK : '#abb2bf')};
   cursor: ${(props) => (props.$clickable ? 'pointer' : 'default')};
-  max-width: 200px;
+  max-width: 360px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border-radius: ${(props) => (props.$clickable ? '4px' : '0')};
+  padding: ${(props) => (props.$clickable ? '1px 6px' : '0')};
+  margin: ${(props) => (props.$clickable ? '0 -2px' : '0')};
+  border-bottom: ${(props) =>
+    props.$clickable
+      ? `1px solid ${EDITOR_BREADCRUMB_LINK_UNDERLINE}`
+      : 'none'};
 
   &:hover {
-    text-decoration: ${(props) => (props.$clickable ? 'underline' : 'none')};
+    text-decoration: none;
+    color: ${(props) =>
+      props.$clickable ? EDITOR_BREADCRUMB_LINK_HOVER : '#abb2bf'};
+    background: ${(props) =>
+      props.$clickable ? EDITOR_BREADCRUMB_LINK_HOVER_BG : 'transparent'};
+    border-bottom-color: ${(props) =>
+      props.$clickable ? EDITOR_BREADCRUMB_LINK_HOVER : 'transparent'};
   }
 `;
 

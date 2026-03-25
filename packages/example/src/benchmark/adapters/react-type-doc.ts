@@ -27,8 +27,8 @@ export const reactTypeDocAdapter: ToolAdapter = {
       // 测量性能
       const { duration } = await measurePerformance(async () => {
         try {
-          // 执行 react-type-doc 命令
-          execSync('bun run generate:react-type-doc', {
+          // 通过 pnpm 执行，保留 workspace 解析上下文，避免 CLI 配置文件中的裸包导入失效
+          execSync('pnpm run generate:react-type-doc', {
             cwd: getProjectRoot(),
             stdio: 'pipe',
           });

@@ -2,10 +2,9 @@
  * TypeDocPanel 组件集成测试
  */
 
-import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { OutputResult } from '../../shared/types';
+import type { OutputResult } from '../../../shared/types';
 import TypeDocPanel from '../TypeDocPanel';
 
 const mockData: OutputResult = {
@@ -76,6 +75,37 @@ const mockData: OutputResult = {
   },
 };
 
+const genericMockData: OutputResult = {
+  generatedAt: '2026-03-23T00:00:00.000Z',
+  keys: {
+    Response: {
+      kind: 'object',
+      text: 'Response<{ id: string }, { code: number }>',
+      genericParameters: [
+        { name: 'T', default: 'unknown' },
+        { name: 'E', default: 'Error' },
+      ],
+      properties: {
+        data: {
+          kind: 'object',
+          text: '{ id: string }',
+          properties: {
+            id: { kind: 'primitive', text: 'string', required: true },
+          },
+        },
+        error: {
+          kind: 'object',
+          text: '{ code: number }',
+          properties: {
+            code: { kind: 'primitive', text: 'number', required: true },
+          },
+        },
+      },
+    },
+  },
+  typeRegistry: {},
+};
+
 describe('TypeDocPanel', () => {
   it('should render union view and nested object details', () => {
     render(<TypeDocPanel typeKey="Result" data={mockData} />);
@@ -106,5 +136,17 @@ describe('TypeDocPanel', () => {
       ),
     ).toBeTruthy();
     expect(screen.getByText(/name/)).toBeTruthy();
+  });
+
+  it('should render structured generic declaration heads', () => {
+    render(<TypeDocPanel typeKey="Response" data={genericMockData} />);
+
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.textContent?.trim() ===
+          'interface Response<T = unknown, E = Error> {',
+      ),
+    ).toBeTruthy();
   });
 });

@@ -1,4 +1,4 @@
-import type { OutputResult, TypeInfo } from '../shared/types';
+import type { OutputResult, TypeInfo } from '../../shared/types';
 import React from 'react';
 import {
   BreadcrumbContainer,
@@ -17,14 +17,18 @@ import {
   Punctuation,
   SourceLocation,
   TypeDocPanelContainer,
-} from './styled';
-import type { TypeDocLocale } from './locale';
-import { en } from './locale';
-import type { TypeRenderContext } from './types';
-import { getBaseName, renderTypeNameWithGenerics } from './renderType';
-import { renderDescription } from './renderDescription';
+} from '../shared/styled';
+import type { TypeDocLocale } from '../shared/locale';
+import { en } from '../shared/locale';
+import type { TypeRenderContext } from '../shared/types';
+import {
+  formatTypeDeclarationName,
+  getBaseName,
+} from '../shared/generic';
+import { renderTypeNameWithGenerics } from './renderType';
+import { renderDescription } from '../shared/renderDescription';
 import { renderPropertyLine, renderUnionTypeView } from './renderView';
-import { useTypeNavigation } from './useTypeNavigation';
+import { useTypeNavigation } from './hooks/useTypeNavigation';
 
 export interface TypeDocPanelProps {
   /** Type key (corresponds to keys in the output JSON) */
@@ -84,7 +88,12 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
   const resolved = reader.resolveRef(typeInfo);
 
   /** 包含泛型参数的完整类型名（用于代码块的 interface 声明） */
-  const rootDisplayName = reader.getDisplayName(resolved, typeKey);
+  const rootDisplayName = resolved.genericParameters?.length
+    ? formatTypeDeclarationName(
+        reader.getDisplayName(resolved, typeKey),
+        resolved.genericParameters,
+      )
+    : reader.getDisplayName(resolved, typeKey);
 
   /** 使用实际类型名构建显示标题（不含 registry key 中的路径前缀） */
   const rootDisplayTitle = titlePrefix
@@ -139,7 +148,12 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
     : [];
 
   const displayTypeName = resolvedCurrentType
-    ? reader.getDisplayName(resolvedCurrentType, currentTitle)
+    ? resolvedCurrentType.genericParameters?.length
+      ? formatTypeDeclarationName(
+          reader.getDisplayName(resolvedCurrentType, currentTitle),
+          resolvedCurrentType.genericParameters,
+        )
+      : reader.getDisplayName(resolvedCurrentType, currentTitle)
     : currentTitle;
 
   const panelTitleText = isInNestedView
@@ -192,7 +206,10 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
               <>
                 <CodeLine>
                   <Keyword>interface</Keyword>
-                  {renderTypeNameWithGenerics(displayTypeName)}
+                  {renderTypeNameWithGenerics(
+                    displayTypeName,
+                    resolvedCurrentType?.genericParameters,
+                  )}
                   <Punctuation>{'{'}</Punctuation>
                 </CodeLine>
 
@@ -227,7 +244,10 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
               )}
               <CodeLine>
                 <Keyword>interface</Keyword>
-                {renderTypeNameWithGenerics(rootDisplayName)}
+                {renderTypeNameWithGenerics(
+                  rootDisplayName,
+                  resolved.genericParameters,
+                )}
                 <Punctuation>{'{'}</Punctuation>
               </CodeLine>
 

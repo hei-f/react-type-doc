@@ -9,8 +9,8 @@ import {
   getClickableRanges,
   simplifyOptionalTupleMemberSyntax,
 } from '../typeToCode';
-import { PropsDocReader } from '../../runtime/reader';
-import type { OutputResult, TypeInfo } from '../../shared/types';
+import { PropsDocReader } from '../../../runtime/reader';
+import type { OutputResult, TypeInfo } from '../../../shared/types';
 
 describe('typeInfoToCode', () => {
   it('should convert simple object type to interface code', () => {
@@ -49,6 +49,62 @@ describe('typeInfoToCode', () => {
     expect(code).toContain('size:');
     expect(code).toContain('disabled: boolean;');
     expect(code).toContain('}');
+  });
+
+  it('should render structured generic parameters on object declarations', () => {
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        UserResponse: {
+          kind: 'object',
+          text: 'Response<{ id: string }, { code: number }>',
+          name: 'Response< { id: string }, { code: number } >',
+          genericParameters: [
+            { name: 'T', default: 'unknown' },
+            { name: 'E', default: 'Error' },
+          ],
+          properties: {
+            data: {
+              kind: 'object',
+              text: '{ id: string }',
+              required: true,
+              properties: {
+                id: {
+                  kind: 'primitive',
+                  text: 'string',
+                  required: true,
+                },
+              },
+            },
+            error: {
+              kind: 'object',
+              text: '{ code: number }',
+              required: true,
+              properties: {
+                code: {
+                  kind: 'primitive',
+                  text: 'number',
+                  required: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+    const typeInfo = reader.getRaw('UserResponse')!;
+    const code = typeInfoToCode(
+      typeInfo,
+      reader,
+      reader.getDisplayName(typeInfo, 'UserResponse'),
+    );
+
+    expect(code).toContain('interface Response<T = unknown, E = Error> {');
+    expect(code).toContain('data:');
+    expect(code).toContain('error:');
   });
 
   it('should handle optional properties with ? mark', () => {
@@ -142,6 +198,69 @@ describe('typeInfoToCode', () => {
     expect(code).toContain('[]');
   });
 
+  it('should keep function signature generics off declaration heads', () => {
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        GenericFunc: {
+          kind: 'function',
+          text: '<T>(value: T) => T',
+          signatures: [
+            {
+              parameters: [
+                {
+                  name: 'value',
+                  type: { kind: 'primitive', text: 'T' },
+                },
+              ],
+              returnType: { kind: 'primitive', text: 'T' },
+              genericParameters: [{ name: 'T' }],
+              typeParameters: ['T'],
+            },
+          ],
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+    const typeInfo = reader.getRaw('GenericFunc')!;
+    const code = typeInfoToCode(typeInfo, reader, 'GenericFunc');
+
+    expect(code).toContain('type GenericFunc = <T>(value: T) => T;');
+  });
+
+  it('should render generic function declaration heads from root metadata', () => {
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        GenericAlias: {
+          kind: 'function',
+          text: '(value: T) => T',
+          genericParameters: [{ name: 'T' }],
+          signatures: [
+            {
+              parameters: [
+                {
+                  name: 'value',
+                  type: { kind: 'primitive', text: 'T' },
+                },
+              ],
+              returnType: { kind: 'primitive', text: 'T' },
+            },
+          ],
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+    const typeInfo = reader.getRaw('GenericAlias')!;
+    const code = typeInfoToCode(typeInfo, reader, 'GenericAlias');
+
+    expect(code).toContain('type GenericAlias<T> = (value: T) => T;');
+  });
+
   it('should handle inline anonymous objects', () => {
     const mockData: OutputResult = {
       generatedAt: '2026-03-23T00:00:00.000Z',
@@ -175,6 +294,122 @@ describe('typeInfoToCode', () => {
     expect(code).toContain('id:');
     expect(code).toContain('name:');
     expect(code).toContain('}');
+  });
+
+  it('should pretty print function types with anonymous object parameters', () => {
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        LongAnonymousTypes: {
+          kind: 'object',
+          text: 'LongAnonymousTypes',
+          properties: {
+            onFormSubmit: {
+              kind: 'function',
+              text: '(formData: FormData, options: SubmitOptions) => void',
+              signatures: [
+                {
+                  parameters: [
+                    {
+                      name: 'formData',
+                      type: {
+                        kind: 'object',
+                        text: '{ firstName: string; lastName: string }',
+                        properties: {
+                          firstName: {
+                            kind: 'primitive',
+                            text: 'string',
+                            required: true,
+                          },
+                          lastName: {
+                            kind: 'primitive',
+                            text: 'string',
+                            required: true,
+                          },
+                        },
+                      },
+                    },
+                    {
+                      name: 'options',
+                      type: {
+                        kind: 'object',
+                        text: '{ validateEmail: boolean; sendConfirmation: boolean }',
+                        properties: {
+                          validateEmail: {
+                            kind: 'primitive',
+                            text: 'boolean',
+                            required: true,
+                          },
+                          sendConfirmation: {
+                            kind: 'primitive',
+                            text: 'boolean',
+                            required: true,
+                          },
+                        },
+                      },
+                    },
+                  ],
+                  returnType: {
+                    kind: 'object',
+                    text: 'Promise<{ success: boolean; userId: string; accessToken: string; refreshToken: string; expiresIn: number }>',
+                    properties: {},
+                  },
+                },
+              ],
+              required: true,
+            },
+          },
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+    const typeInfo = reader.getRaw('LongAnonymousTypes')!;
+    const code = typeInfoToCode(typeInfo, reader, 'LongAnonymousTypes');
+
+    expect(code).toContain('onFormSubmit: (');
+    expect(code).toContain(
+      '    formData: {\n      firstName: string;\n      lastName: string\n    },',
+    );
+    expect(code).toContain(
+      '    options: {\n      validateEmail: boolean;\n      sendConfirmation: boolean\n    }\n  ) => Promise<',
+    );
+    expect(code).toContain(
+      '      success: boolean;\n      userId: string;\n      accessToken: string;\n      refreshToken: string;\n      expiresIn: number\n    }\n  >;',
+    );
+  });
+
+  it('should keep simple function types inline', () => {
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        Props: {
+          kind: 'object',
+          text: 'Props',
+          properties: {
+            loadUser: {
+              kind: 'function',
+              text: '() => Promise<User>',
+              signatures: [
+                {
+                  parameters: [],
+                  returnType: { kind: 'primitive', text: 'Promise<User>' },
+                },
+              ],
+              required: true,
+            },
+          },
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+    const typeInfo = reader.getRaw('Props')!;
+    const code = typeInfoToCode(typeInfo, reader, 'Props');
+
+    expect(code).toContain('loadUser: () => Promise<User>;');
   });
 
   it('should preserve JSDoc comments', () => {
@@ -262,10 +497,11 @@ describe('getClickableRanges', () => {
     const ranges = getClickableRanges(code, typeInfo, reader);
 
     expect(ranges).toHaveLength(1);
-    expect(ranges[0].typeName).toBe('User');
-    expect(ranges[0].fieldName).toBe('user');
-    expect(ranges[0].range.startLine).toBeGreaterThan(0);
-    expect(ranges[0].range.startColumn).toBeGreaterThan(0);
+    const firstRange = ranges[0]!;
+    expect(firstRange.typeName).toBe('User');
+    expect(firstRange.fieldName).toBe('user');
+    expect(firstRange.range.startLine).toBeGreaterThan(0);
+    expect(firstRange.range.startColumn).toBeGreaterThan(0);
   });
 
   it('should identify clickable type names in union types', () => {
@@ -339,6 +575,11 @@ describe('getClickableRanges', () => {
         label: { kind: 'primitive', text: 'string', required: true },
       },
     };
+    const inlineUnion: TypeInfo = {
+      kind: 'union',
+      text: 'InlineUnion',
+      unionTypes: [inlineObject],
+    };
     const mockData: OutputResult = {
       generatedAt: '2026-03-23T00:00:00.000Z',
       keys: {
@@ -355,6 +596,7 @@ describe('getClickableRanges', () => {
             },
           },
         },
+        InlineUnion: inlineUnion,
       },
       typeRegistry: {},
     };
@@ -380,6 +622,20 @@ describe('getClickableRanges', () => {
     );
     expect(inlineListCode).toContain('items:');
     expect(inlineListRanges).toHaveLength(0);
+
+    const inlineUnionType = reader.getRaw('InlineUnion')!;
+    const inlineUnionCode = typeInfoToCode(
+      inlineUnionType,
+      reader,
+      'InlineUnion',
+    );
+    const inlineUnionRanges = getClickableRanges(
+      inlineUnionCode,
+      inlineUnionType,
+      reader,
+    );
+    expect(inlineUnionCode).toContain('| {');
+    expect(inlineUnionRanges).toHaveLength(0);
   });
 
   it('should render named union aliases with meta info', () => {

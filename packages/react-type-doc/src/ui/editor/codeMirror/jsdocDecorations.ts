@@ -9,20 +9,20 @@ import {
   type Text,
 } from '@codemirror/state';
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view';
-import type { TypeInfo } from '../shared/types';
-import type { PropsDocReader } from '../runtime/reader';
+import type { TypeInfo } from '../../../shared/types';
+import type { PropsDocReader } from '../../../runtime/reader';
 import {
   JSDOC_INLINE_LINK_PATTERN,
   resolveJSDocTypeLink,
-} from './renderDescription';
-import type { JSDocBlockMeta } from './typeToCode';
-import { clickableRangeToOffsets } from './codeMirrorClickableDecorations';
+} from '../../shared/renderDescription';
+import type { JSDocBlockMeta } from '../typeToCode';
+import { clickableRangeToOffsets } from './clickableDecorations';
 import {
   CODE_MIRROR_JSDOC_TAG_CLASS_NAME,
   CODE_MIRROR_JSDOC_TYPE_LINK_CLASS_NAME,
   CODE_MIRROR_JSDOC_TYPE_REF_CLASS_NAME,
   CODE_MIRROR_JSDOC_URL_CLASS_NAME,
-} from './codeMirrorEditorUiConstants';
+} from './constants';
 
 export const requestJSDocDecorationsRebuildEffect = StateEffect.define<null>();
 
@@ -117,7 +117,7 @@ function collectSpansForDescriptionFragment(
       } else {
         const found = resolveJSDocTypeLink(target, reader, descriptionLinks);
         const deco = decos[decos.length - 1];
-        if (found) {
+        if (found && deco) {
           deco.className = CODE_MIRROR_JSDOC_TYPE_LINK_CLASS_NAME;
           clicks.push({
             range: {

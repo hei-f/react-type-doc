@@ -3,10 +3,9 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import React from 'react';
 import { render } from '@testing-library/react';
-import type { OutputResult } from '../../shared/types';
-import { en } from '../locale';
+import type { OutputResult } from '../../../shared/types';
+import { en } from '../../shared/locale';
 
 vi.mock('@uiw/react-codemirror', () => ({
   default: ({ value }: { value?: string }) => (
@@ -16,7 +15,7 @@ vi.mock('@uiw/react-codemirror', () => ({
   ),
 }));
 
-vi.mock('../TypeDocPanel', () => ({
+vi.mock('../../panel/TypeDocPanel', () => ({
   default: () => null,
 }));
 
@@ -34,6 +33,43 @@ const mockData: OutputResult = {
         disabled: {
           kind: 'primitive',
           text: 'boolean',
+        },
+      },
+    },
+  },
+  typeRegistry: {},
+};
+
+const genericMockData: OutputResult = {
+  generatedAt: '2026-03-23T00:00:00.000Z',
+  keys: {
+    Response: {
+      kind: 'object',
+      text: 'Response<T, Error>',
+      name: 'Response<T = unknown, E = Error>',
+      isGeneric: true,
+      properties: {
+        data: {
+          kind: 'object',
+          text: '{ id: string }',
+          properties: {
+            id: {
+              kind: 'primitive',
+              text: 'string',
+              required: true,
+            },
+          },
+        },
+        error: {
+          kind: 'object',
+          text: '{ code: number }',
+          properties: {
+            code: {
+              kind: 'primitive',
+              text: 'number',
+              required: true,
+            },
+          },
         },
       },
     },
@@ -76,6 +112,21 @@ describe('TypeDocEditorPanel', () => {
     expect(codeContent).toContain('interface Button');
     expect(codeContent).toContain('size');
     expect(codeContent).toContain('disabled');
+  });
+
+  it('should render legacy generic declaration heads in editor code', async () => {
+    const { TypeDocEditorPanel } = await import('../TypeDocEditorPanel');
+
+    const { getByTestId } = render(
+      <TypeDocEditorPanel typeKey="Response" data={genericMockData} />,
+    );
+
+    const editor = getByTestId('codemirror-editor');
+    const codeContent = editor.textContent || '';
+
+    expect(codeContent).toContain(
+      'interface Response<T = unknown, E = Error> {',
+    );
   });
 
   it('should display panel title with type name', async () => {

@@ -1,5 +1,5 @@
-import type { TypeInfo } from '../shared/types';
-import type { PropsDocReader } from '../runtime/reader';
+import type { TypeInfo } from '../../shared/types';
+import type { PropsDocReader } from '../../runtime/reader';
 import type { TypeDocLocale } from './locale';
 
 /** 导航历史条目 */

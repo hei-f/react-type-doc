@@ -16,13 +16,14 @@ import { bracketMatching, codeFolding, foldGutter } from '@codemirror/language';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
-import type { TypeDocPanelProps } from './TypeDocPanel';
-import { useTypeNavigation } from './useTypeNavigation';
+import type { TypeDocPanelProps } from '../panel/TypeDocPanel';
+import { useTypeNavigation } from '../panel/hooks/useTypeNavigation';
 import {
   typeInfoToCodeWithMeta,
   getClickableRanges,
   type ClickableRange,
   type JSDocBlockMeta,
+  type SemanticRangeMeta,
 } from './typeToCode';
 import {
   TypeDocPanelContainer,
@@ -34,9 +35,9 @@ import {
   BreadcrumbSeparator,
   SourceLocation,
   EmptyState,
-} from './styled';
-import { en } from './locale';
-import { getBaseName } from './renderType';
+} from '../shared/styled';
+import { en } from '../shared/locale';
+import { formatTypeDeclarationName } from '../shared/generic';
 import {
   CODE_MIRROR_CLICKABLE_TYPE_THEME,
   CODE_MIRROR_COMPONENT_ROOT_STYLE,
@@ -45,19 +46,24 @@ import {
   CODE_MIRROR_MATCHING_BRACKET_THEME,
   CODE_MIRROR_OUTER_WRAPPER_STYLE,
   CODE_MIRROR_RAINBOW_BRACKET_THEME,
-} from './codeMirrorEditorUiConstants';
+  CODE_MIRROR_SEMANTIC_THEME,
+} from './codeMirror/constants';
 import {
   clickableRangeToOffsets,
   createClickableDecorationsField,
   requestClickableDecorationsRebuildEffect,
-} from './codeMirrorClickableDecorations';
+} from './codeMirror/clickableDecorations';
+import {
+  createSemanticDecorationsField,
+  requestSemanticDecorationsRebuildEffect,
+} from './codeMirror/semanticDecorations';
 import {
   buildJSDocClickTargetsFromCode,
   createJSDocDecorationsField,
   requestJSDocDecorationsRebuildEffect,
   type JSDocClickTarget,
-} from './codeMirrorJSDocDecorations';
-import { rainbowBracketsField } from './codeMirrorRainbowBrackets';
+} from './codeMirror/jsdocDecorations';
+import { rainbowBracketsField } from './codeMirror/rainbowBrackets';
 
 /**
  * TypeDocEditorPanel 组件
@@ -83,6 +89,7 @@ export const TypeDocEditorPanel: React.FC<TypeDocPanelProps> = (props) => {
   const clickHoverTitleRef = useRef(locale.clickToViewType);
   const [editorCode, setEditorCode] = useState<string>('');
   const editorCodeRef = useRef('');
+  const semanticRangesRef = useRef<SemanticRangeMeta[]>([]);
   const jsdocBlocksRef = useRef<JSDocBlockMeta[]>([]);
   const jsdocClicksRef = useRef<JSDocClickTarget[]>([]);
   const readerRef = useRef(reader);
@@ -115,6 +122,8 @@ export const TypeDocEditorPanel: React.FC<TypeDocPanelProps> = (props) => {
       rainbowBracketsField,
       CODE_MIRROR_MATCHING_BRACKET_THEME,
       CODE_MIRROR_JSDOC_LINK_THEME,
+      CODE_MIRROR_SEMANTIC_THEME,
+      createSemanticDecorationsField(() => semanticRangesRef.current),
       createJSDocDecorationsField(
         () => editorCodeRef.current,
         () => jsdocBlocksRef.current,
@@ -203,7 +212,12 @@ export const TypeDocEditorPanel: React.FC<TypeDocPanelProps> = (props) => {
 
   const resolved = reader.resolveRef(typeInfo);
 
-  const rootDisplayName = reader.getDisplayName(resolved, typeKey);
+  const rootDisplayName = resolved.genericParameters?.length
+    ? formatTypeDeclarationName(
+        reader.getDisplayName(resolved, typeKey),
+        resolved.genericParameters,
+      )
+    : reader.getDisplayName(resolved, typeKey);
   const rootDisplayTitle = titlePrefix
     ? `${titlePrefix} - ${rootDisplayName}`
     : rootDisplayName;
@@ -215,15 +229,20 @@ export const TypeDocEditorPanel: React.FC<TypeDocPanelProps> = (props) => {
   const isNestedUnion = isInNestedView && resolvedCurrentType?.kind === 'union';
 
   const displayTypeName = resolvedCurrentType
-    ? reader.getDisplayName(resolvedCurrentType, currentTitle)
+    ? resolvedCurrentType.genericParameters?.length
+      ? formatTypeDeclarationName(
+          reader.getDisplayName(resolvedCurrentType, currentTitle),
+          resolvedCurrentType.genericParameters,
+        )
+      : reader.getDisplayName(resolvedCurrentType, currentTitle)
     : currentTitle;
 
   const propEntries = reader.getPropertyEntries(currentTypeInfoToRender);
 
   const panelTitleText = isInNestedView
     ? isNestedUnion
-      ? getBaseName(displayTypeName)
-      : `${getBaseName(displayTypeName)} — ${locale.propertiesCount(propEntries.length)}`
+      ? displayTypeName
+      : `${displayTypeName} — ${locale.propertiesCount(propEntries.length)}`
     : `${rootDisplayTitle} — ${locale.propertiesCount(propEntries.length)}`;
 
   const requestDecorationsRebuild = useCallback(() => {
@@ -234,6 +253,7 @@ export const TypeDocEditorPanel: React.FC<TypeDocPanelProps> = (props) => {
     view.dispatch({
       effects: [
         requestClickableDecorationsRebuildEffect.of(null),
+        requestSemanticDecorationsRebuildEffect.of(null),
         requestJSDocDecorationsRebuildEffect.of(null),
       ],
     });
@@ -248,7 +268,7 @@ export const TypeDocEditorPanel: React.FC<TypeDocPanelProps> = (props) => {
   );
 
   useEffect(() => {
-    const { code, jsdocBlocks } = typeInfoToCodeWithMeta(
+    const { code, jsdocBlocks, semanticRanges } = typeInfoToCodeWithMeta(
       currentTypeInfoToRender,
       reader,
       isInNestedView ? displayTypeName : rootDisplayName,
@@ -257,6 +277,7 @@ export const TypeDocEditorPanel: React.FC<TypeDocPanelProps> = (props) => {
     const ranges = getClickableRanges(code, currentTypeInfoToRender, reader);
     clickableRangesRef.current = ranges;
     editorCodeRef.current = code;
+    semanticRangesRef.current = semanticRanges;
     jsdocBlocksRef.current = jsdocBlocks;
     jsdocClicksRef.current = buildJSDocClickTargetsFromCode(
       code,

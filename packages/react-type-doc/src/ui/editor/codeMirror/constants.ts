@@ -5,13 +5,70 @@
 import type { CSSProperties } from 'react';
 import { EditorView } from '@codemirror/view';
 import {
-  BRACKET_PAIR_HIGHLIGHT_COLORS,
+  EDITOR_BREADCRUMB_LINK,
   PANEL_THEME_CLICKABLE_LINK_COLOR,
   PANEL_THEME_JS_DOC_TAG_COLOR,
   PANEL_THEME_JS_DOC_URL_COLOR,
   PANEL_THEME_LINK_HOVER_COLOR,
   PANEL_THEME_TYPE_NAME_COLOR,
-} from './panelThemeColors';
+} from '../../shared/panelThemeColors';
+
+/** 语义范围类型（与 typeToCode 输出的元数据一一对应） */
+export const CODE_MIRROR_SEMANTIC_RANGE_KIND = {
+  TypeName: 'type-name',
+  NamespaceName: 'namespace-name',
+  PropertyName: 'property-name',
+  FunctionPropertyName: 'function-property-name',
+  BaseType: 'base-type',
+  PropertyType: 'property-type',
+} as const;
+
+/** 归为基础类型语义色的文本关键词 */
+export const CODE_MIRROR_BASE_TYPE_KEYWORDS = [
+  'any',
+  'bigint',
+  'boolean',
+  'never',
+  'null',
+  'number',
+  'string',
+  'symbol',
+  'undefined',
+  'unknown',
+  'void',
+] as const;
+
+/** 语义范围类名：类型名 */
+export const CODE_MIRROR_SEMANTIC_TYPE_NAME_CLASS_NAME =
+  'cm-rtd-semantic-type-name';
+
+/** 语义范围类名：命名空间前缀 */
+export const CODE_MIRROR_SEMANTIC_NAMESPACE_NAME_CLASS_NAME =
+  'cm-rtd-semantic-namespace-name';
+
+/** 语义范围类名：属性名 */
+export const CODE_MIRROR_SEMANTIC_PROPERTY_NAME_CLASS_NAME =
+  'cm-rtd-semantic-property-name';
+
+/** 语义范围类名：函数属性名 */
+export const CODE_MIRROR_SEMANTIC_FUNCTION_PROPERTY_NAME_CLASS_NAME =
+  'cm-rtd-semantic-function-property-name';
+
+/** 语义范围类名：基础类型 */
+export const CODE_MIRROR_SEMANTIC_BASE_TYPE_CLASS_NAME =
+  'cm-rtd-semantic-base-type';
+
+/** 语义范围类名：属性类型 */
+export const CODE_MIRROR_SEMANTIC_PROPERTY_TYPE_CLASS_NAME =
+  'cm-rtd-semantic-property-type';
+
+/** CodeMirror 彩虹括号色板：避免外层括号和类型名同色 */
+export const CODE_MIRROR_RAINBOW_BRACKET_COLORS = [
+  PANEL_THEME_JS_DOC_TAG_COLOR,
+  PANEL_THEME_JS_DOC_URL_COLOR,
+  '#98c379',
+  PANEL_THEME_TYPE_NAME_COLOR,
+] as const;
 
 /** 编辑器正文字号（px），与经典面板可读性接近 */
 export const CODE_MIRROR_BASE_FONT_SIZE_PX = 14;
@@ -55,6 +112,10 @@ export const CODE_MIRROR_JSDOC_TYPE_REF_CLASS_NAME = 'cm-rtd-jsdoc-type-ref';
 const jsdocDecoAndDescendants = (className: string) =>
   `.cm-content span.${className}, .cm-content span.${className} *`;
 
+/** 语义装饰同样会被 token span 包裹，需要同时命中后代 */
+const semanticDecoAndDescendants = (className: string) =>
+  `.cm-content span.${className}, .cm-content span.${className} *`;
+
 export const CODE_MIRROR_JSDOC_LINK_THEME = EditorView.theme({
   [jsdocDecoAndDescendants(CODE_MIRROR_JSDOC_TAG_CLASS_NAME)]: {
     color: `${PANEL_THEME_JS_DOC_TAG_COLOR} !important`,
@@ -81,6 +142,37 @@ export const CODE_MIRROR_JSDOC_LINK_THEME = EditorView.theme({
       color: `${PANEL_THEME_LINK_HOVER_COLOR} !important`,
     },
   [jsdocDecoAndDescendants(CODE_MIRROR_JSDOC_TYPE_REF_CLASS_NAME)]: {
+    color: `${PANEL_THEME_TYPE_NAME_COLOR} !important`,
+    fontStyle: 'normal',
+  },
+});
+
+export const CODE_MIRROR_SEMANTIC_THEME = EditorView.theme({
+  [semanticDecoAndDescendants(
+    CODE_MIRROR_SEMANTIC_NAMESPACE_NAME_CLASS_NAME,
+  )]: {
+    color: `${EDITOR_BREADCRUMB_LINK} !important`,
+    fontStyle: 'normal',
+  },
+  [semanticDecoAndDescendants(CODE_MIRROR_SEMANTIC_TYPE_NAME_CLASS_NAME)]: {
+    color: `${PANEL_THEME_TYPE_NAME_COLOR} !important`,
+    fontStyle: 'normal',
+  },
+  [semanticDecoAndDescendants(CODE_MIRROR_SEMANTIC_PROPERTY_NAME_CLASS_NAME)]: {
+    color: '#e06c75 !important',
+    fontStyle: 'normal',
+  },
+  [semanticDecoAndDescendants(
+    CODE_MIRROR_SEMANTIC_FUNCTION_PROPERTY_NAME_CLASS_NAME,
+  )]: {
+    color: `${PANEL_THEME_JS_DOC_URL_COLOR} !important`,
+    fontStyle: 'normal',
+  },
+  [semanticDecoAndDescendants(CODE_MIRROR_SEMANTIC_BASE_TYPE_CLASS_NAME)]: {
+    color: `${PANEL_THEME_JS_DOC_TAG_COLOR} !important`,
+    fontStyle: 'normal',
+  },
+  [semanticDecoAndDescendants(CODE_MIRROR_SEMANTIC_PROPERTY_TYPE_CLASS_NAME)]: {
     color: `${PANEL_THEME_TYPE_NAME_COLOR} !important`,
     fontStyle: 'normal',
   },
@@ -135,19 +227,19 @@ export const CODE_MIRROR_CLICKABLE_TYPE_THEME = EditorView.theme({
 /** 彩虹括号：提高选择器优先级以压过语法高亮标点色 */
 export const CODE_MIRROR_RAINBOW_BRACKET_THEME = EditorView.theme({
   '.cm-content span.cm-rtd-rainbow-bracket-0': {
-    color: BRACKET_PAIR_HIGHLIGHT_COLORS[0],
+    color: CODE_MIRROR_RAINBOW_BRACKET_COLORS[0],
     fontWeight: '600',
   },
   '.cm-content span.cm-rtd-rainbow-bracket-1': {
-    color: BRACKET_PAIR_HIGHLIGHT_COLORS[1],
+    color: CODE_MIRROR_RAINBOW_BRACKET_COLORS[1],
     fontWeight: '600',
   },
   '.cm-content span.cm-rtd-rainbow-bracket-2': {
-    color: BRACKET_PAIR_HIGHLIGHT_COLORS[2],
+    color: CODE_MIRROR_RAINBOW_BRACKET_COLORS[2],
     fontWeight: '600',
   },
   '.cm-content span.cm-rtd-rainbow-bracket-3': {
-    color: BRACKET_PAIR_HIGHLIGHT_COLORS[3],
+    color: CODE_MIRROR_RAINBOW_BRACKET_COLORS[3],
     fontWeight: '600',
   },
 });

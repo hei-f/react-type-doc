@@ -1,8 +1,8 @@
-import type { OutputResult, TypeInfo } from '../shared/types';
-import { PropsDocReader } from '../runtime/reader';
+import type { OutputResult, TypeInfo } from '../../../shared/types';
+import { PropsDocReader } from '../../../runtime/reader';
 import { useMemo, useState } from 'react';
-import type { TypeDocLocale } from './locale';
-import type { HistoryItem } from './types';
+import type { TypeDocLocale } from '../../shared/locale';
+import type { HistoryItem } from '../../shared/types';
 
 interface TypeNavigationResult {
   /** PropsDocReader 实例（data 为 null 时返回 null） */

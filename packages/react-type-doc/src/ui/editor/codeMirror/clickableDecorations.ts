@@ -9,8 +9,8 @@ import {
   type Text,
 } from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
-import type { ClickableRange } from './typeToCode';
-import { CODE_MIRROR_CLICKABLE_TYPE_CLASS_NAME } from './codeMirrorEditorUiConstants';
+import type { ClickableRange } from '../typeToCode';
+import { CODE_MIRROR_CLICKABLE_TYPE_CLASS_NAME } from './constants';
 
 /** 请求按当前 ref 中的 ranges 重建装饰（文档变更或 ranges 变更时 dispatch） */
 export const requestClickableDecorationsRebuildEffect =

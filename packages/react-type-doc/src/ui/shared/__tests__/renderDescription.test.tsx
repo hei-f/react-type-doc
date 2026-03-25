@@ -2,11 +2,10 @@
  * renderDescription / JSDoc parsing tests
  */
 
-import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { OutputResult } from '../../shared/types';
-import { PropsDocReader } from '../../runtime/reader';
+import type { OutputResult, FullTypeInfo } from '../../../shared/types';
+import { PropsDocReader } from '../../../runtime/reader';
 import { en } from '../locale';
 import type { TypeRenderContext } from '../types';
 import {
@@ -25,7 +24,7 @@ const buttonType = {
       required: true,
     },
   },
-};
+} satisfies FullTypeInfo;
 
 const mockData: OutputResult = {
   generatedAt: '2026-03-23T00:00:00.000Z',

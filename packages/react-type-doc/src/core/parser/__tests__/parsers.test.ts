@@ -846,6 +846,7 @@ describe('类型解析器', () => {
         ) {
           const sig = typeInfo.signatures[0];
           expect(sig?.typeParameters).toBeDefined();
+          expect(sig?.genericParameters?.[0]?.name).toBe('T');
         }
       }
     });
@@ -865,6 +866,17 @@ describe('类型解析器', () => {
       expect(typeInfo).toBeDefined();
       if ('kind' in typeInfo) {
         expect(typeInfo.kind).toBe('function');
+        if (
+          typeInfo.kind === 'function' &&
+          'signatures' in typeInfo &&
+          typeInfo.signatures
+        ) {
+          expect(
+            typeInfo.signatures[0]?.genericParameters?.map(
+              (param) => param.name,
+            ),
+          ).toEqual(['T', 'K', 'V']);
+        }
       }
     });
   });

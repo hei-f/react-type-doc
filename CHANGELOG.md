@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-03-25
+
+### Added
+
+- 结构化泛型参数提取与展示，保留约束和默认值，并在运行时与 UI 中统一呈现
+- `TypeDocEditorPanel` 增强只读 CodeMirror 展示，加入 JSDoc 链接、语义和括号高亮
+- `TypeDocPanel` 与泛型声明标题展示支持更完整的泛型签名
+
+### Fixed
+
+- `Record` / `Partial<Record>` 等映射类型的值类型回退更稳定
+- `{@link}` 引用解析可正确跟随本地与导入类型
+
+### Changed
+
+- 示例项目补充 GitHub Pages 部署配置，并更新 Node 版本约束
+- 文档和发布说明同步更新，补充新的泛型展示说明
+
 ## [1.2.0] - 2026-03-23
 
 ### Added
@@ -87,7 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 类型缓存机制，优化重复解析性能
 - 索引签名、元组、重载函数签名等高级类型支持
 - ESM / CommonJS 双格式输出
-
+[1.3.0]: https://github.com/hei-f/react-type-doc/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/hei-f/react-type-doc/compare/v1.1.3...v1.2.0
 [1.1.3]: https://github.com/hei-f/react-type-doc/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/hei-f/react-type-doc/compare/v1.1.1...v1.1.2

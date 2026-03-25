@@ -1,5 +1,5 @@
-import type { TypeInfo } from '../shared/types';
-import { TYPE_CATEGORY } from '../shared/types';
+import type { TypeInfo } from '../../shared/types';
+import { TYPE_CATEGORY } from '../../shared/types';
 import React from 'react';
 import {
   ClickableTypeName,
@@ -8,16 +8,18 @@ import {
   CodeLine,
   FunctionPropertyName,
   Indent,
+  GenericParams,
   Keyword,
   OptionalMark,
   PropertyName,
   Punctuation,
   TypeName,
-} from './styled';
-import type { TypeRenderContext } from './types';
+} from '../shared/styled';
+import type { TypeRenderContext } from '../shared/types';
+import { splitTypeNameAndGenericParameters } from '../shared/generic';
 import { renderTypeText } from './renderType';
-import { renderDescription } from './renderDescription';
-import { RENDER_TYPE } from '../runtime/renderTypes';
+import { renderDescription } from '../shared/renderDescription';
+import { RENDER_TYPE } from '../../runtime/renderTypes';
 
 /**
  * 渲染联合类型视图
@@ -29,6 +31,8 @@ export function renderUnionTypeView(
 ): React.ReactNode {
   const resolved = context.reader.resolveRef(typeInfo);
   const unionTypes = resolved.unionTypes ?? [];
+  const { baseName, genericParametersText } =
+    splitTypeNameAndGenericParameters(typeName, resolved.genericParameters);
 
   return (
     <CodeContainer>
@@ -45,7 +49,14 @@ export function renderUnionTypeView(
         )}
         <CodeLine>
           <Keyword>type</Keyword>
-          <TypeName> {typeName} </TypeName>
+          <TypeName>
+            {' '}
+            {baseName}
+            {genericParametersText ? (
+              <GenericParams>{`<${genericParametersText}>`}</GenericParams>
+            ) : null}
+            {' '}
+          </TypeName>
           <Punctuation>= </Punctuation>
         </CodeLine>
 
@@ -64,6 +75,18 @@ export function renderUnionTypeView(
             indentLevel: 1,
             bracketLevel: 0,
           };
+          const memberNameParts = splitTypeNameAndGenericParameters(
+            displayName,
+            resolvedMember.genericParameters,
+          );
+          const memberNameContent = (
+            <>
+              {memberNameParts.baseName}
+              {memberNameParts.genericParametersText ? (
+                <GenericParams>{`<${memberNameParts.genericParametersText}>`}</GenericParams>
+              ) : null}
+            </>
+          );
 
           return (
             <CodeLine key={idx}>
@@ -76,10 +99,10 @@ export function renderUnionTypeView(
                   onClick={() => context.onTypeClick(unionMember, displayName)}
                   title={context.locale.clickToViewDetails}
                 >
-                  {displayName}
+                  {memberNameContent}
                 </ClickableTypeName>
               ) : (
-                <TypeName>{displayName}</TypeName>
+                <TypeName>{memberNameContent}</TypeName>
               )}
               <Punctuation>;</Punctuation>
             </CodeLine>

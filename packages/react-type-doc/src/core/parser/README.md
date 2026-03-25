@@ -12,7 +12,7 @@ parser/
 ├── utils/
 │   ├── helpers.ts        # 纯工具函数和常量（hash、文本清理、类型显示名等）
 │   ├── typeKind.ts       # 类型分类（Type → TypeCategory 映射）
-│   └── extractors.ts     # 元数据提取（JSDoc、源码位置、属性类型等）
+│   └── extractors.ts     # 元数据提取（JSDoc、源码位置、泛型参数、属性类型等）
 ├── detectors/
 │   ├── builtinDetector.ts   # 内置类型检测（hasNoDefaultLib、文件路径特征）
 │   └── externalDetector.ts  # 外部类型检测（node_modules、Utility Types、别名）
@@ -38,7 +38,7 @@ parser/
 
 **工具类型展开：** Partial、Omit、Pick 等 TypeScript Utility Types 会被完全展开为具体属性，而非保留类型表达式。
 
-**泛型感知（`extractors.ts`）：** 通过 `containsGenericTypeParameter` 递归检测未实例化的泛型参数，未实例化时标记 `isGeneric: true`，工具类型在泛型未实例化时排除属性。
+**泛型感知（`extractors.ts` / `objectParser.ts` / `functionParser.ts`）：** 通过 `containsGenericTypeParameter` 递归检测未实例化的泛型参数，未实例化时标记 `isGeneric: true`；同时提取结构化 `genericParameters`，保留声明级的 `name` / `constraint` / `default`，供 runtime 和 UI 渲染声明头。工具类型在泛型未实例化时仍会排除属性。
 
 **联合类型简化（`unionParser.ts`）：** 可选属性的 `T | undefined` 自动简化为 `T`，`false | true` 合并为 `boolean`。
 
@@ -47,3 +47,4 @@ parser/
 - 全局缓存是模块级状态。每次完整解析流程前必须调用 `clearTypeCache()`，否则会携带上次解析的残留数据
 - 解析过程中 `visited` 集合按路径传递（每条路径独立拷贝），而 `typeCache` 是全局共享的。同一类型在不同路径上首次遇到时正常解析，再次遇到时从缓存返回引用
 - 各 `parsers/` 子模块通过接收 `RecursiveParser` 回调实现与主入口的解耦，避免循环依赖
+- `isGeneric` 只表示“类型内部是否仍含未实例化的泛型参数”，而 `genericParameters` 保存的是声明级泛型签名。二者语义不同，不应混用。

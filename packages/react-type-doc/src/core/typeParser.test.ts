@@ -18,6 +18,7 @@ import {
   createTestFile,
   getExportedType,
 } from '../__tests__/helpers/testUtils';
+import { INDEX_SIGNATURE_STRING_KEY } from '../shared/constants';
 import { Project } from 'ts-morph';
 
 describe('typeParser', () => {
@@ -922,6 +923,31 @@ describe('typeParser', () => {
       expect(typeInfo).toBeDefined();
     });
 
+    it('应该正确回退嵌套映射类型的值类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type NestedRecord = Partial<Record<string, number>>;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'NestedRecord');
+      const typeInfo = parseTypeInfo(type!);
+
+      if ('kind' in typeInfo && typeInfo.kind === 'object') {
+        expect(typeInfo.properties).toBeDefined();
+        const indexSignature =
+          typeInfo.properties?.[INDEX_SIGNATURE_STRING_KEY];
+        expect(indexSignature).toBeDefined();
+        if (indexSignature && 'kind' in indexSignature) {
+          expect(indexSignature.kind).toBe('primitive');
+          expect(indexSignature.text).toBe('number');
+          expect(indexSignature.required).toBe(false);
+        }
+      }
+    });
+
     it('应该处理 Exclude 工具类型', () => {
       createTestFile(
         project,
@@ -1553,6 +1579,7 @@ describe('typeParser', () => {
         ) {
           const sig = typeInfo.signatures[0];
           expect(sig?.typeParameters).toBeDefined();
+          expect(sig?.genericParameters?.[0]?.name).toBe('T');
         }
       }
     });
@@ -1572,6 +1599,17 @@ describe('typeParser', () => {
       expect(typeInfo).toBeDefined();
       if ('kind' in typeInfo) {
         expect(typeInfo.kind).toBe('function');
+        if (
+          typeInfo.kind === 'function' &&
+          'signatures' in typeInfo &&
+          typeInfo.signatures
+        ) {
+          expect(
+            typeInfo.signatures[0]?.genericParameters?.map(
+              (param) => param.name,
+            ),
+          ).toEqual(['T', 'K', 'V']);
+        }
       }
     });
   });
@@ -1806,7 +1844,11 @@ describe('typeParser', () => {
       expect(type).toBeDefined();
 
       const typeInfo = parseTypeInfo(type!);
-      if ('kind' in typeInfo && typeInfo.kind === 'object' && typeInfo.properties) {
+      if (
+        'kind' in typeInfo &&
+        typeInfo.kind === 'object' &&
+        typeInfo.properties
+      ) {
         const partialProp = typeInfo.properties.partial;
         expect(partialProp).toBeDefined();
 
@@ -1857,8 +1899,35 @@ describe('typeParser', () => {
       const typeInfo = parseTypeInfo(type!);
       if ('kind' in typeInfo && typeInfo.kind === 'object') {
         expect(typeInfo.isGeneric).toBe(true);
+        expect(typeInfo.genericParameters?.[0]?.name).toBe('T');
         expect(typeInfo.properties).toBeDefined();
         expect(typeInfo.properties).toHaveProperty('value');
+      }
+    });
+
+    it('带默认值的泛型类型参数应保留纯名字和默认值', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export interface Response<T = unknown, E = Error> {
+          data: T;
+          error: E;
+        }
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'Response');
+      expect(type).toBeDefined();
+
+      const typeInfo = parseTypeInfo(type!);
+      if ('kind' in typeInfo && typeInfo.kind === 'object') {
+        expect(typeInfo.genericParameters?.map((param) => param.name)).toEqual([
+          'T',
+          'E',
+        ]);
+        expect(typeInfo.genericParameters?.[0]?.default).toBe('unknown');
+        expect(typeInfo.genericParameters?.[1]?.default).toBe('Error');
       }
     });
   });

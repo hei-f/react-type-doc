@@ -4,7 +4,7 @@
 
 import { StateField, RangeSetBuilder, type Text } from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
-import { BRACKET_PAIR_HIGHLIGHT_COLORS } from './panelThemeColors';
+import { CODE_MIRROR_RAINBOW_BRACKET_COLORS } from './constants';
 
 const OPEN_BRACKETS = new Set(['{', '(', '[']);
 const CLOSE_BRACKETS = new Set(['}', ')', ']']);
@@ -119,7 +119,7 @@ function buildRainbowBracketDecorations(doc: Text): DecorationSet {
     if (OPEN_BRACKETS.has(c)) {
       const depth = depthStack.length;
       depthStack.push(depth);
-      const tone = depth % BRACKET_PAIR_HIGHLIGHT_COLORS.length;
+      const tone = depth % CODE_MIRROR_RAINBOW_BRACKET_COLORS.length;
       builder.add(
         i,
         i + 1,
@@ -134,7 +134,7 @@ function buildRainbowBracketDecorations(doc: Text): DecorationSet {
     if (CLOSE_BRACKETS.has(c)) {
       if (depthStack.length > 0) {
         const depth = depthStack.pop()!;
-        const tone = depth % BRACKET_PAIR_HIGHLIGHT_COLORS.length;
+        const tone = depth % CODE_MIRROR_RAINBOW_BRACKET_COLORS.length;
         builder.add(
           i,
           i + 1,

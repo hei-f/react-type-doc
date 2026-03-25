@@ -3,9 +3,10 @@ import type {
   FunctionSignature,
   TypeInfo,
   FullTypeInfo,
-} from '../shared/types';
-import { RENDER_TYPE } from '../runtime/renderTypes';
-import type { TypeRenderInfo } from '../runtime/renderTypes';
+  GenericParameterInfo,
+} from '../../shared/types';
+import { RENDER_TYPE } from '../../runtime/renderTypes';
+import type { TypeRenderInfo } from '../../runtime/renderTypes';
 import React from 'react';
 import {
   ClickableTypeName,
@@ -16,38 +17,50 @@ import {
   Punctuation,
   StringLiteral,
   TypeName,
-} from './styled';
-import type { TypeRenderContext } from './types';
+} from '../shared/styled';
+import type { TypeRenderContext } from '../shared/types';
+import {
+  formatGenericParameterList,
+  splitTypeNameAndGenericParameters,
+} from '../shared/generic';
 import { renderPropertyLine } from './renderView';
-import { simplifyOptionalTupleMemberSyntax } from './typeToCode';
+import { simplifyOptionalTupleMemberSyntax } from '../editor/typeToCode';
 
 /**
  * 将类型名拆分为基础名和泛型参数部分，分别用不同样式渲染。
  * 例如 "Dictionary<T = unknown>" → TypeName("Dictionary") + GenericParams("<T = unknown>")
  */
-export function renderTypeNameWithGenerics(name: string): React.ReactNode {
-  const angleIdx = name.indexOf('<');
-  if (angleIdx === -1) {
-    return <TypeName>{` ${name} `}</TypeName>;
-  }
+function renderTypeNameContent(
+  name: string,
+  genericParameters?: GenericParameterInfo[] | null,
+): React.ReactNode {
+  const { baseName, genericParametersText } =
+    splitTypeNameAndGenericParameters(name, genericParameters);
 
-  const baseName = name.slice(0, angleIdx);
-  const genericPart = name.slice(angleIdx);
   return (
     <>
-      <TypeName>{` ${baseName}`}</TypeName>
-      <GenericParams>{`${genericPart} `}</GenericParams>
+      {baseName}
+      {genericParametersText ? (
+        <GenericParams>{`<${genericParametersText}>`}</GenericParams>
+      ) : null}
     </>
   );
 }
 
 /**
- * 从类型名中提取不含泛型参数的基础名。
- * 例如 "Dictionary<T = unknown>" → "Dictionary"
+ * 渲染类型名与泛型参数
  */
-export function getBaseName(name: string): string {
-  const angleIdx = name.indexOf('<');
-  return angleIdx === -1 ? name : name.slice(0, angleIdx);
+export function renderTypeNameWithGenerics(
+  name: string,
+  genericParameters?: GenericParameterInfo[] | null,
+): React.ReactNode {
+  return (
+    <TypeName>
+      {' '}
+      {renderTypeNameContent(name, genericParameters)}
+      {' '}
+    </TypeName>
+  );
 }
 
 /**
@@ -83,22 +96,16 @@ function renderFunctionSignature(
   signature: FunctionSignature,
   context: TypeRenderContext,
 ): React.ReactNode {
-  const { parameters, returnType, typeParameters } = signature;
+  const { parameters, returnType, typeParameters, genericParameters } =
+    signature;
+  const genericParametersText =
+    formatGenericParameterList(genericParameters) || typeParameters?.join(', ');
 
   return (
     <>
       {/* 泛型参数 */}
-      {typeParameters && typeParameters.length > 0 && (
-        <>
-          <Punctuation>{'<'}</Punctuation>
-          {typeParameters.map((tp: string, idx: number) => (
-            <React.Fragment key={idx}>
-              {idx > 0 && <Punctuation>, </Punctuation>}
-              <TypeName>{tp}</TypeName>
-            </React.Fragment>
-          ))}
-          <Punctuation>{'>'}</Punctuation>
-        </>
+      {genericParametersText && (
+        <GenericParams>{`<${genericParametersText}> `}</GenericParams>
       )}
 
       {/* 参数列表 */}
@@ -287,7 +294,10 @@ export function renderTypeText(
           }
           title={locale.circularRef(renderInfo.name, renderInfo.sourceHint)}
         >
-          {renderInfo.name}
+          {renderTypeNameContent(
+            renderInfo.name,
+            renderInfo.resolved.genericParameters,
+          )}
         </ClickableTypeName>
       );
 
@@ -362,6 +372,10 @@ export function renderTypeText(
     case RENDER_TYPE.OBJECT: {
       const isExpandable = renderInfo.expandable;
       const isGeneric = reader.isGenericType(typeInfo);
+      const typeNameContent = renderTypeNameContent(
+        renderInfo.name,
+        renderInfo.resolved.genericParameters,
+      );
 
       if (isExpandable) {
         return (
@@ -375,7 +389,7 @@ export function renderTypeText(
                 : locale.clickToViewType
             }
           >
-            {renderInfo.name}
+            {typeNameContent}
           </ClickableTypeName>
         );
       }
@@ -383,12 +397,12 @@ export function renderTypeText(
       if (isGeneric) {
         return (
           <TypeName title={locale.genericCannotExpand(renderInfo.name)}>
-            {renderInfo.name}
+            {typeNameContent}
           </TypeName>
         );
       }
 
-      return <TypeName>{renderInfo.name}</TypeName>;
+      return <TypeName>{typeNameContent}</TypeName>;
     }
 
     case RENDER_TYPE.INLINE_OBJECT:
@@ -404,7 +418,10 @@ export function renderTypeText(
           }
           title={locale.clickToViewType}
         >
-          {renderInfo.text}
+          {renderTypeNameContent(
+            renderInfo.name,
+            renderInfo.resolved.genericParameters,
+          )}
         </ClickableTypeName>
       );
 

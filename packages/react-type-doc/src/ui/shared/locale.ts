@@ -1,5 +1,5 @@
-import type { RenderHint } from '../shared/types';
-import { RENDER_HINT } from '../shared/types';
+import type { RenderHint } from '../../shared/types';
+import { RENDER_HINT } from '../../shared/types';
 
 /** Locale definition for TypeDocPanel i18n */
 export interface TypeDocLocale {

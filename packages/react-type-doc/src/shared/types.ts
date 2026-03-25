@@ -68,6 +68,16 @@ export const RENDER_HINT = {
   Generic: 'generic',
 } satisfies Record<string, RenderHint>;
 
+/** 泛型参数信息（声明级） */
+export interface GenericParameterInfo {
+  /** 类型参数名称 */
+  name: string;
+  /** 约束类型（extends） */
+  constraint?: string;
+  /** 默认类型（=） */
+  default?: string;
+}
+
 /** 函数参数信息 */
 export interface FunctionParameter {
   /** 参数名称 */
@@ -88,6 +98,8 @@ export interface FunctionSignature {
   returnType: TypeInfo;
   /** 签名的类型参数（泛型），例如 ['T', 'K'] 表示 <T, K>。当函数没有泛型参数时该字段不存在 */
   typeParameters?: string[];
+  /** 结构化泛型参数（声明级）；优先于 typeParameters 用于展示和代码生成 */
+  genericParameters?: GenericParameterInfo[];
 }
 
 /** 完整类型信息结构 */
@@ -117,6 +129,9 @@ export interface FullTypeInfo {
 
   /** 类型描述（从 JSDoc 提取） */
   description?: string;
+
+  /** 声明级结构化泛型参数 */
+  genericParameters?: GenericParameterInfo[];
 
   /** 是否必填（仅在属性上下文中使用） */
   required?: boolean;

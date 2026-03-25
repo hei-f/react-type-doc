@@ -12,7 +12,12 @@ import type {
 } from '../../../shared/types';
 import type { RecursiveParser } from '../utils/helpers';
 import { buildNameField, getTypeDisplayName } from '../utils/helpers';
-import { extractSymbolSourceLocation } from '../utils/extractors';
+import {
+  buildGenericDisplayName,
+  extractGenericParametersFromDeclaration,
+  extractGenericParametersFromTypeParameters,
+  extractSymbolSourceLocation,
+} from '../utils/extractors';
 import { getParseConfig } from '../config';
 
 /**
@@ -71,21 +76,20 @@ function parseFunctionSignature(
   const returnType = recurse(signature.getReturnType(), visited, depth + 1);
 
   // 获取泛型参数（如果有）
-  const typeParameters = signature
-    .getTypeParameters()
-    .map((tp, index) => {
-      const symbol = tp.getSymbol();
-      // 如果获取不到符号名，使用索引作为 fallback（T0, T1, T2...）
-      return symbol ? symbol.getName() : `T${index}`;
-    })
-    .filter((name) => name && name !== 'unknown');
+  const genericParameters = extractGenericParametersFromTypeParameters(
+    signature.getTypeParameters(),
+  );
+  const typeParameters = genericParameters.map((param) => param.name);
 
   const typeParams = typeParameters.length > 0 ? { typeParameters } : {};
+  const genericParams =
+    genericParameters.length > 0 ? { genericParameters } : {};
 
   return {
     parameters,
     returnType,
     ...typeParams,
+    ...genericParams,
   } as FunctionSignature;
 }
 
@@ -106,16 +110,23 @@ export function parseFunctionType(
 
   const config = getParseConfig();
   const symbol = type.getSymbol() || type.getAliasSymbol();
+  const genericParameters = extractGenericParametersFromDeclaration(
+    symbol?.getDeclarations()?.[0],
+  );
   const symbolLocation = config.enableSourceLocation
     ? extractSymbolSourceLocation(symbol)
     : {};
   const displayName = getTypeDisplayName(type, typeText);
+  const genericDisplayName =
+    genericParameters.length > 0 ? buildGenericDisplayName(type) : null;
+  const finalDisplayName = genericDisplayName ?? displayName;
 
   return {
-    ...buildNameField(displayName, typeText),
+    ...buildNameField(finalDisplayName, typeText),
     kind: 'function' as TypeCategory,
     text: typeText,
     signatures,
+    ...(genericParameters.length > 0 ? { genericParameters } : {}),
     ...symbolLocation,
   };
 }

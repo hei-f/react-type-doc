@@ -18,6 +18,7 @@ import {
 } from '../../../shared/constants';
 import {
   extractDescription,
+  extractGenericParametersFromDeclaration,
   resolveDescriptionLinks,
   extractSourceLocation,
   extractSymbolSourceLocation,
@@ -133,6 +134,9 @@ export function parseObjectType(
   const properties = parseObjectProperties(type, visited, depth, recurse);
   const config = getParseConfig();
   const symbol = type.getSymbol() || type.getAliasSymbol();
+  const genericParameters = extractGenericParametersFromDeclaration(
+    symbol?.getDeclarations()?.[0],
+  );
   const symbolLocation = config.enableSourceLocation
     ? extractSymbolSourceLocation(symbol)
     : {};
@@ -165,17 +169,17 @@ export function parseObjectType(
   const isUtilityWithGeneric =
     hasGenericParam && isTypeScriptUtilityType(typeText);
 
-  // 对含泛型参数的类型，尝试构建包含默认值的完整显示名称
-  // 例如：Dictionary<T> → Dictionary<T = unknown>
-  const genericDisplayName = hasGenericParam
-    ? buildGenericDisplayName(type)
-    : null;
+  // 对含泛型参数的类型，尝试构建完整的泛型显示名称
+  // 例如：Dictionary<T> → Dictionary<T>，Dictionary<T = unknown> → Dictionary<T = unknown>
+  const genericDisplayName =
+    genericParameters.length > 0 ? buildGenericDisplayName(type) : null;
   const finalDisplayName = genericDisplayName ?? displayName;
 
   return {
     ...buildNameField(finalDisplayName, typeText),
     kind: 'object' as TypeCategory,
     text: typeText,
+    ...(genericParameters.length > 0 ? { genericParameters } : {}),
     ...(hasProperties && !isUtilityWithGeneric ? { properties } : {}),
     ...(hasGenericParam ? { isGeneric: true } : {}),
     ...symbolLocation,

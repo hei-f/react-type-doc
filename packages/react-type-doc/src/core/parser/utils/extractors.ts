@@ -13,6 +13,7 @@ import type {
 } from 'ts-morph';
 import { getCacheKey } from '../cache';
 import { cleanTypeText } from './helpers';
+import type { GenericParameterInfo } from '../../../shared/types';
 
 // ============================================================
 // 类型保护
@@ -291,6 +292,59 @@ export function containsGenericTypeParameter(
   return false;
 }
 
+/** 可提取泛型参数声明的最小结构 */
+interface GenericParameterDeclarationLike {
+  getText: () => string;
+  getStructure?: () => { name: string } | undefined;
+  getConstraint?: () => { getText: () => string } | undefined;
+  getDefault?: () => { getText: () => string } | undefined;
+}
+
+/**
+ * 从 type parameter 声明列表提取结构化泛型参数信息
+ */
+export function extractGenericParametersFromTypeParameters(
+  typeParameters: GenericParameterDeclarationLike[] | undefined,
+): GenericParameterInfo[] {
+  if (!typeParameters || typeParameters.length === 0) {
+    return [];
+  }
+
+  return typeParameters.map((param) => {
+    const constraint = param.getConstraint?.()?.getText().trim();
+    const defaultType = param.getDefault?.()?.getText().trim();
+    const structureName = param.getStructure?.()?.name?.trim();
+
+    return {
+      name: structureName || param.getText().trim(),
+      ...(constraint ? { constraint } : {}),
+      ...(defaultType ? { default: defaultType } : {}),
+    };
+  });
+}
+
+/**
+ * 从声明节点提取结构化泛型参数信息
+ */
+export function extractGenericParametersFromDeclaration(
+  declaration: Node | undefined,
+): GenericParameterInfo[] {
+  if (!declaration || !('getTypeParameters' in declaration)) {
+    return [];
+  }
+
+  const getTypeParameters = (declaration as Record<string, unknown>)
+    .getTypeParameters as (() => GenericParameterDeclarationLike[]) | undefined;
+
+  if (typeof getTypeParameters !== 'function') {
+    return [];
+  }
+
+  return extractGenericParametersFromTypeParameters(
+    getTypeParameters.call(declaration),
+  );
+}
+
 /**
  * 从声明中提取完整的泛型签名（含默认值和约束）
  *
@@ -309,38 +363,16 @@ export function buildGenericDisplayName(type: Type): string | null {
   if (!declarations || declarations.length === 0) return null;
 
   const decl = declarations[0];
-  if (!decl || !('getTypeParameters' in decl)) return null;
-
-  type TypeParamDecl = {
-    getName: () => string;
-    getDefault?: () => { getText: () => string } | undefined;
-    getConstraint?: () => { getText: () => string } | undefined;
-  };
-
-  const getTypeParams = (decl as Record<string, unknown>).getTypeParameters as
-    | (() => TypeParamDecl[])
-    | undefined;
-  if (typeof getTypeParams !== 'function') return null;
-
-  const typeParams = getTypeParams.call(decl) as TypeParamDecl[];
+  const typeParams = extractGenericParametersFromDeclaration(decl);
   if (!typeParams || typeParams.length === 0) return null;
 
-  const hasAnyDefault = typeParams.some(
-    (param) => param.getDefault?.() != null,
-  );
-  if (!hasAnyDefault) return null;
-
   const paramStrings = typeParams.map((param) => {
-    const name = param.getName();
-    const constraint = param.getConstraint?.();
-    const defaultType = param.getDefault?.();
-
-    let str = name;
-    if (constraint) {
-      str += ` extends ${constraint.getText()}`;
+    let str = param.name;
+    if (param.constraint) {
+      str += ` extends ${param.constraint}`;
     }
-    if (defaultType) {
-      str += ` = ${defaultType.getText()}`;
+    if (param.default) {
+      str += ` = ${param.default}`;
     }
     return str;
   });

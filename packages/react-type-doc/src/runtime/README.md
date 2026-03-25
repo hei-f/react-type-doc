@@ -70,3 +70,4 @@
 
 - `resolveRef` 在合并引用时有默认值规则：`description` 默认空字符串、`required` 默认 `false`。引用自身的 description/required 优先于被引用类型上的值
 - `getTypeRenderInfo` 的判定顺序是 `renderHint` 优先于 `kind`，即先看展示策略标记，再看类型本质。唯一例外是 `renderHint: 'generic'` 不影响渲染，会继续按 `kind` 处理
+- `TypeInfo.genericParameters` 和 `FunctionSignature.genericParameters` 保存的是声明级泛型签名；UI 层可以优先用它渲染 `interface` / `type` / 函数头，旧数据则回退到 `name` / `text`

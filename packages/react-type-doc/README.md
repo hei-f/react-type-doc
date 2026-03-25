@@ -1,20 +1,14 @@
 # react-type-doc
 
-从 TypeScript/React 源码**生成**结构化类型文档 JSON（`OutputResult`），供运行时 **`PropsDocReader`** 或可选 **内置 UI** 消费；目标是在应用里展开工具类型、处理循环引用与 `$ref` 去重，而不是只展示类型名字符串。
+`react-type-doc` 用于把 TypeScript / React 源码解析成结构化类型文档 JSON，并提供只读运行时与开箱即用的 UI 面板。它解决的问题不是“打印类型字符串”，而是把属性、联合、泛型、循环引用和 `$ref` 组织成可在应用中稳定浏览的数据。
 
-## 子路径与职责
+## 主要入口
 
-| 子路径 | 内容 | 适用场景 |
+| 子路径 | 作用 | 适用场景 |
 |--------|------|----------|
-| `react-type-doc` | `defineConfig`、`PropsDocReader`、完整类型与解析相关导出、`npx react-type-doc` CLI | 配置文件、Node 侧生成、需要完整类型定义时 |
-| `react-type-doc/runtime` | `PropsDocReader` 及消费 JSON 所需的类型/工具（**无** `defineConfig` / 完整 `ParseOptions` 等） | 浏览器 bundle 只读已生成数据时 |
-| `react-type-doc/ui` | `TypeDocPanel`、`TypeDocEditorPanel`、`TypeDocEditorPanelLazy`、`en` / `zhCN`、面板相关类型 | 需要开箱 UI 时 |
-
-## 数据流与耦合
-
-1. **生成**：`reactTypeDoc.config.ts`（`defineConfig`）→ CLI 解析工程 → 输出 JSON（`keys` + `typeRegistry`，条目间 `$ref`）。
-2. **消费**：应用加载该 JSON → `PropsDocReader.getInstance(data)` 做查询/解析，**或**将同一 `data` 传入 `TypeDocPanel` / `TypeDocEditorPanel` 的 `data`，并用 `typeKey` 对齐 `keys`。
-3. **边界**：UI 与 Reader **只依赖生成结果**；不反向依赖 CLI。切换展示类型只改 `typeKey` 或 reader 查询，不重新跑 CLI（除非源码或配置变了）。
+| `react-type-doc` | `defineConfig`、完整解析导出、`PropsDocReader`、`npx react-type-doc` CLI | 构建期生成 JSON、Node 侧解析、需要完整类型能力时 |
+| `react-type-doc/runtime` | 只读运行时 API，包含 `PropsDocReader` 及消费 JSON 所需的工具 | 浏览器或前端 bundle 只读取已生成数据时 |
+| `react-type-doc/ui` | `TypeDocPanel`、`TypeDocEditorPanel`、`TypeDocEditorPanelLazy`、`en` / `zhCN` | 需要直接渲染类型文档界面时 |
 
 ## 安装
 
@@ -22,24 +16,51 @@
 npm install react-type-doc
 ```
 
-## 命令行
+## 使用方式
+
+1. 用 CLI 生成 JSON。
 
 ```bash
-npx react-type-doc init   # 生成 reactTypeDoc.config.ts
-npx react-type-doc        # 按配置写出 JSON
+npx react-type-doc init
+npx react-type-doc
 ```
 
-配置项（`registry` / `scanDirs`、`ParseOptions` 等）以仓库根目录文档为准。
+2. 在运行时读取同一份 JSON。
 
-## peerDependencies（使用 UI 时必读）
+```tsx
+import typeData from './react-type-doc.json';
+import { PropsDocReader } from 'react-type-doc/runtime';
+import { TypeDocPanel } from 'react-type-doc/ui';
 
-- **`react`、`react-dom`、`styled-components`**：使用 `react-type-doc/ui` 时须在**应用**中安装，与 `package.json` 中 peer 版本范围一致。
-- **CodeMirror 相关**（`@uiw/react-codemirror`、`@codemirror/*`、`@replit/codemirror-indentation-markers`）：列为 **optional** peer；**仅在使用 `TypeDocEditorPanel` / `TypeDocEditorPanelLazy` 时需要**，由应用安装，库**不打包**进本包产物，以免重复与版本冲突。
-- **`TypeDocEditorPanelLazy`**：适合与 `Suspense` 搭配，推迟加载编辑器依赖。
+const reader = PropsDocReader.create(typeData);
+```
+
+3. 在 UI 中展示目标类型。
+
+```tsx
+<TypeDocPanel typeKey="Button" data={typeData} />
+```
+
+`TypeDocEditorPanel` 与 `TypeDocEditorPanelLazy` 适合 CodeMirror 风格的代码面板；`TypeDocEditorPanelLazy` 可与 `Suspense` 搭配按需加载。
+
+## 关键注意事项
+
+- `data` 必须是 CLI 生成的 JSON；`PropsDocReader` 和 UI 都只消费生成结果，不直接解析源码。
+- `typeKey` 必须与 JSON 里的 `keys` 对齐，否则面板找不到目标类型。
+- `PropsDocReader.create(data)` 适合多份数据并存；`PropsDocReader.getInstance(data)` 适合全局共享一份数据。
+- 使用 `react-type-doc/ui` 时，应用需要自行安装 `react`、`react-dom`、`styled-components`。
+- 使用 `TypeDocEditorPanel` / `TypeDocEditorPanelLazy` 时，还需要应用侧安装 CodeMirror 相关的 optional peer 依赖。
+- 泛型展示依赖结构化元数据 `genericParameters`。当这份信息存在时，声明头会渲染完整泛型，例如 `interface Response<T = unknown, E = Error> {}`；如果只有旧的 `name` / `text`，则回退到兼容显示，不会从实例化结果自动反推原始泛型声明。
 
 ## 文档
 
-- 特性说明、配置详解、JSON 结构、UI 示例：仓库根目录 [README.md](../../README.md)。
+- 更完整的功能、配置和 JSON 结构说明见仓库根目录 [README.md](../../README.md)。
+- 分层说明：
+  - [src/core/README.md](src/core/README.md)
+  - [src/runtime/README.md](src/runtime/README.md)
+  - [src/ui/README.md](src/ui/README.md)
+  - [src/cli/README.md](src/cli/README.md)
+  - [src/shared/README.md](src/shared/README.md)
 
 ## 许可证
 

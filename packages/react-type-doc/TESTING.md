@@ -36,35 +36,43 @@ packages/react-type-doc/
 
 ## 运行测试
 
+**须通过子包 `package.json` 的脚本调用 Vitest**（会加载 `vitest.config.ts` 中的 `environment: jsdom` 等）。**不要使用**裸命令 `bun test`：那是 Bun 内置测试运行器，不读 Vitest 配置，UI 相关用例会失败（如 `document is not defined`）。
+
 ### 基础命令
 
-```bash
-# 运行所有测试
-bun test
+在 `packages/react-type-doc` 目录：
 
-# 运行测试并生成覆盖率报告
-bun test:coverage
+```bash
+# 运行所有测试（单次执行后退出；发布/CI 请用此形式）
+bun run test run
+
+# 开发时 watch（默认 Vitest 监听模式）
+bun run test
+
+# 运行测试并生成覆盖率报告（单次）
+bun run test:coverage run
 
 # 运行测试并打开 UI 界面
-bun test:ui
+bun run test:ui
+```
 
-# 在根目录运行测试
-bun run test
-bun run test:coverage
+在仓库根目录（脚本会 `--cwd` 到子包）：
+
+```bash
+bun run test -- run
+bun run test:coverage -- run
 bun run test:ui
 ```
 
 ### 运行特定测试
 
 ```bash
-# 运行特定文件的测试
-bun test typeParser
+cd packages/react-type-doc
 
-# 运行特定文件的测试
-bun test reader
-
-# 运行特定测试套件
-bun test getTypeRenderInfo
+# 按文件名/路径片段过滤（Vitest）
+bun run test run typeParser
+bun run test run reader
+bun run test run getTypeRenderInfo
 ```
 
 ## 测试文件组织
@@ -182,8 +190,8 @@ All files       |   79.59 |    75.05 |    87.5 |   79.96 |
 
 ```bash
 # 生成并查看 HTML 覆盖率报告
-bun test:coverage
-open packages/react-type-doc/coverage/index.html
+cd packages/react-type-doc && bun run test:coverage run
+open coverage/index.html
 ```
 
 ## 测试最佳实践
@@ -264,20 +272,20 @@ createTestFile(
 
 ### Q: 测试运行很慢怎么办？
 
-A: 
-- 使用 `bun test <pattern>` 运行特定测试
+A:
+- 使用 `bun run test run <pattern>`（在 `packages/react-type-doc`）运行子集
 - 使用 `--reporter=dot` 减少输出
 - 检查是否有死循环或无限递归
 
 ### Q: 覆盖率报告在哪里？
 
-A: 运行 `bun test:coverage` 后，报告会生成在 `packages/react-type-doc/coverage/` 目录下。
+A: 在 `packages/react-type-doc` 执行 `bun run test:coverage run` 后，报告生成在 `coverage/` 目录下。
 
 ### Q: 如何调试失败的测试？
 
 A:
 - 使用 `console.log` 输出中间结果
-- 使用 Vitest UI: `bun test:ui`
+- 使用 Vitest UI: `bun run test:ui`
 - 使用 VS Code 的调试功能
 
 ### Q: 为什么 Array<T> 被识别为 'object'？
@@ -288,8 +296,8 @@ A: 这是 ts-morph 的行为，泛型数组类型（如 `Array<string>`）可能
 
 在提交代码时：
 
-1. 确保所有测试通过: `bun test`
-2. 确保覆盖率不下降: `bun test:coverage`
+1. 确保所有测试通过: `bun run test run`（在 `packages/react-type-doc`）或仓库根 `bun run test -- run`
+2. 确保覆盖率不下降: `bun run test:coverage run`（在子包）或 `bun run test:coverage -- run`（在根目录）
 3. 为新功能添加测试
 4. 更新相关文档
 

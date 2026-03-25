@@ -182,7 +182,8 @@ TypeScript 类型检查结果：
 **3.2 运行完整测试套件并验证通过率**
 
 - 进入包目录：`cd packages/react-type-doc`
-- 执行完整测试命令：`bun test` 或 `bun run test`
+- 执行完整测试命令：`bun run test run`（`run` 传给 Vitest，单次跑完全部用例后退出）
+- **禁止**使用裸命令 `bun test`：那是 **Bun 内置测试运行器**，不会读取本包的 `vitest.config.ts`，`environment: jsdom` 等不生效，会导致 `@testing-library/react` 相关用例报 `document is not defined` 等错误。
 - **强制要求**：所有测试必须100%通过，不允许有任何失败或错误的测试用例
 - 如果发现测试失败：
   - **立即终止发布流程**
@@ -203,7 +204,7 @@ TypeScript 类型检查结果：
 
 **3.3 运行测试覆盖率分析**
 
-- 执行测试覆盖率命令：`bun run test:coverage`
+- 在 `packages/react-type-doc` 目录执行：`bun run test:coverage run`（同样需带 `run`，避免 watch 挂起；且须走 Vitest，理由同 3.2）
 - 等待测试运行完成，获取覆盖率报告
 
 **3.4 分析本次改动的测试覆盖情况**
@@ -265,7 +266,7 @@ TypeScript 类型检查结果：
    - 执行：`git commit -m "test: 添加{具体功能}的测试用例"`
 
 4. **验证测试覆盖率**：
-   - 重新运行测试覆盖率命令
+   - 重新运行：`cd packages/react-type-doc && bun run test:coverage run`
    - 确认覆盖率是否达标
    - 如果仍有不足，重复步骤2-4
 
@@ -648,7 +649,7 @@ npm install react-type-doc@{版本号}
 2. **清晰告知失败的步骤和原因**
 3. **提供可能的解决建议**：
    - TypeScript错误：检查类型定义，运行 `bun run type-check` 定位问题
-   - 测试失败：运行 `bun test` 查看详细错误，检查测试用例
+   - 测试失败：在 `packages/react-type-doc` 运行 `bun run test run` 查看详细错误，检查测试用例
    - 构建失败：检查tsup配置，查看构建日志
    - npm发布失败：检查登录状态、版本号、网络连接
    - git推送失败：检查远程仓库权限、分支保护规则
@@ -704,11 +705,11 @@ react-type-doc/
 # 类型检查
 bun run type-check
 
-# 运行测试
-cd packages/react-type-doc && bun test
+# 运行测试（须通过 npm script 调用 Vitest，并单次执行）
+cd packages/react-type-doc && bun run test run
 
-# 测试覆盖率
-cd packages/react-type-doc && bun run test:coverage
+# 测试覆盖率（单次执行）
+cd packages/react-type-doc && bun run test:coverage run
 
 # 构建
 bun run build

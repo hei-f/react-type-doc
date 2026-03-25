@@ -216,6 +216,10 @@ onSubmit: (key: string, value: unknown) => Promise<boolean>;
 | **JSDoc 多标签** | ✅ | ⚠️ 仅描述 |
 | **`as const` 对象** | ✅ | ❌ |
 
+**泛型声明展示说明**：
+- 当生成结果里携带 `genericParameters` 时，UI 和 CodeMirror 会优先渲染完整声明头，例如 `interface Response<T = unknown, E = Error> {}`。
+- 如果数据已经是实例化后的别名，且没有保留 `genericParameters`，标题行只会显示当前别名名；默认类型参数会体现在成员类型里，而不会从实例化结果自动反推回声明泛型。
+
 ---
 
 ## 🤖 Cursor Skill

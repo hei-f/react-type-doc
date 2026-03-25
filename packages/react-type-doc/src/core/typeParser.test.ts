@@ -18,6 +18,7 @@ import {
   createTestFile,
   getExportedType,
 } from '../__tests__/helpers/testUtils';
+import { INDEX_SIGNATURE_STRING_KEY } from '../shared/constants';
 import { Project } from 'ts-morph';
 
 describe('typeParser', () => {
@@ -920,6 +921,31 @@ describe('typeParser', () => {
       const typeInfo = parseTypeInfo(type!);
 
       expect(typeInfo).toBeDefined();
+    });
+
+    it('应该正确回退嵌套映射类型的值类型', () => {
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type NestedRecord = Partial<Record<string, number>>;
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'NestedRecord');
+      const typeInfo = parseTypeInfo(type!);
+
+      if ('kind' in typeInfo && typeInfo.kind === 'object') {
+        expect(typeInfo.properties).toBeDefined();
+        const indexSignature =
+          typeInfo.properties?.[INDEX_SIGNATURE_STRING_KEY];
+        expect(indexSignature).toBeDefined();
+        if (indexSignature && 'kind' in indexSignature) {
+          expect(indexSignature.kind).toBe('primitive');
+          expect(indexSignature.text).toBe('number');
+          expect(indexSignature.required).toBe(false);
+        }
+      }
     });
 
     it('应该处理 Exclude 工具类型', () => {

@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "benchmark": "tsx src/benchmark/runner.ts",
-    "generate:react-type-doc": "bun ../react-type-doc/src/cli/index.ts"
+    "generate:react-type-doc": "react-type-doc"
   },
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.5",

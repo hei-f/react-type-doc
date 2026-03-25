@@ -60,8 +60,10 @@
     ]
   },
   "engines": {
+    "node": ">=20.19.0",
     "bun": ">=1.0.0"
   },
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": "git@github.com:hei-f/react-type-doc.git"
 }

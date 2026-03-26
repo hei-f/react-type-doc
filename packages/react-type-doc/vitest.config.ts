@@ -38,11 +38,11 @@ export default defineConfig({
       },
     },
 
-    // 测试超时时间（coverage 下 ts-morph 用例明显变慢，需高于默认 10s）
-    testTimeout: 30000,
+    // 测试超时时间（coverage 下部分解析用例会明显变慢）
+    testTimeout: 60000,
 
     // 钩子超时时间
-    hookTimeout: 30000,
+    hookTimeout: 60000,
   },
 
   resolve: {

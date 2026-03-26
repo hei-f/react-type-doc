@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-03-26
+
+### Added
+
+- 默认面板切换为 CodeMirror，提升只读类型文档的浏览体验
+- 结构化泛型参数展示保留约束与默认值，泛型声明更完整
+
+### Fixed
+
+- 修复嵌套类型可点击范围定位问题，覆盖函数参数、元组和结构化泛型展示场景
+- 修复包含冒号的字符串字面量在缓存引用中的解析问题
+- 修复 CLI 与示例部署链路中的可执行入口和构建顺序问题
+
+### Changed
+
+- 更新 README，补充新的编辑器面板说明
+- 新增 GitHub Actions 部署说明，方便维护示例站点构建流程
+
 ## [1.3.0] - 2026-03-25
 
 ### Added
@@ -105,6 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 类型缓存机制，优化重复解析性能
 - 索引签名、元组、重载函数签名等高级类型支持
 - ESM / CommonJS 双格式输出
+[1.3.1]: https://github.com/hei-f/react-type-doc/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/hei-f/react-type-doc/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/hei-f/react-type-doc/compare/v1.1.3...v1.2.0
 [1.1.3]: https://github.com/hei-f/react-type-doc/compare/v1.1.2...v1.1.3

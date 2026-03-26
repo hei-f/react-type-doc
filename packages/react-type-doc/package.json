@@ -43,9 +43,10 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "react-type-doc": "dist/cli.js"
+    "react-type-doc": "./bin/react-type-doc.js"
   },
   "files": [
+    "bin",
     "dist",
     "README.md",
     "LICENSE"

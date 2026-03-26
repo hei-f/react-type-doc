@@ -5,6 +5,8 @@
 [![npm version](https://img.shields.io/npm/v/react-type-doc.svg)](https://www.npmjs.com/package/react-type-doc)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+在线演示: [GitHub Pages](https://hei-f.github.io/react-type-doc/)
+
 ## 🎯 为什么选择 react-type-doc？
 
 **react-type-doc** 不是又一个文档生成器，而是专门为**在应用中动态展示类型信息**而设计的工具。

@@ -774,6 +774,56 @@ describe('getClickableRanges', () => {
     expect(jsdocBlocks).toHaveLength(1);
   });
 
+  it('should keep semantic ranges for malformed generic display names', () => {
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        BrokenName: {
+          kind: 'object',
+          text: 'BrokenName',
+          properties: {},
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+    const typeInfo = reader.getRaw('BrokenName')!;
+    const { code, semanticRanges } = typeInfoToCodeWithMeta(
+      typeInfo,
+      reader,
+      'BrokenName<T',
+    );
+
+    expect(code).toContain('BrokenName<T');
+    expect(semanticRanges.length).toBeGreaterThan(0);
+  });
+
+  it('should keep semantic ranges for intersection generic display names', () => {
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        WrappedValue: {
+          kind: 'object',
+          text: 'WrappedValue',
+          properties: {},
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+    const typeInfo = reader.getRaw('WrappedValue')!;
+    const { code, semanticRanges } = typeInfoToCodeWithMeta(
+      typeInfo,
+      reader,
+      'Wrapper<Foo & Bar>',
+    );
+
+    expect(code).toContain('Wrapper<Foo & Bar>');
+    expect(semanticRanges.length).toBeGreaterThan(0);
+  });
+
   it('should simplify tuple optional member syntax', () => {
     expect(simplifyOptionalTupleMemberSyntax('[(string | undefined)?]')).toBe(
       '[string?]',

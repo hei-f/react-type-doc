@@ -35,8 +35,10 @@ describe('字符串字面量包含冒号', () => {
     expect(type).toBeDefined();
 
     const typeInfo = parseTypeInfo(type!);
-    expect('kind' in typeInfo && typeInfo.kind).toBe('literal');
-    expect('text' in typeInfo && typeInfo.text).toBe('"https://example.com"');
+    expect(typeInfo).toMatchObject({
+      kind: 'literal',
+      text: '"https://example.com"',
+    });
   });
 
   it('应该正确处理包含多个冒号的字符串字面量', () => {
@@ -46,8 +48,10 @@ describe('字符串字面量包含冒号', () => {
     expect(type).toBeDefined();
 
     const typeInfo = parseTypeInfo(type!);
-    expect('kind' in typeInfo && typeInfo.kind).toBe('literal');
-    expect('text' in typeInfo && typeInfo.text).toBe('"12:30:45"');
+    expect(typeInfo).toMatchObject({
+      kind: 'literal',
+      text: '"12:30:45"',
+    });
   });
 
   it('应该正确处理键值对格式的字符串字面量', () => {
@@ -61,8 +65,10 @@ describe('字符串字面量包含冒号', () => {
     expect(type).toBeDefined();
 
     const typeInfo = parseTypeInfo(type!);
-    expect('kind' in typeInfo && typeInfo.kind).toBe('literal');
-    expect('text' in typeInfo && typeInfo.text).toBe('"key:value:extra"');
+    expect(typeInfo).toMatchObject({
+      kind: 'literal',
+      text: '"key:value:extra"',
+    });
   });
 
   it('simplifyOptionalUnion 应该正确处理包含冒号的字面量缓存引用', () => {
@@ -81,10 +87,16 @@ describe('字符串字面量包含冒号', () => {
     ) as FullTypeInfo;
 
     // 验证文本格式正确提取了包含冒号的值
-    expect('text' in result && result.text).toContain('https://example.com');
-    expect('text' in result && result.text).toContain('http://test.com');
+    expect(result).toMatchObject({
+      text: expect.stringContaining('https://example.com'),
+    });
+    expect(result).toMatchObject({
+      text: expect.stringContaining('http://test.com'),
+    });
     // 确保冒号没有被错误截断
-    expect('text' in result && result.text).not.toContain('literal:string:');
+    expect(result).toMatchObject({
+      text: expect.not.stringContaining('literal:string:'),
+    });
   });
 
   it('simplifyOptionalUnion 应该正确处理包含多个冒号的字面量', () => {
@@ -101,7 +113,11 @@ describe('字符串字面量包含冒号', () => {
       mockUnionWithMultipleColons,
     ) as FullTypeInfo;
 
-    expect('text' in result && result.text).toContain('12:30:45');
-    expect('text' in result && result.text).toContain('23:59:59');
+    expect(result).toMatchObject({
+      text: expect.stringContaining('12:30:45'),
+    });
+    expect(result).toMatchObject({
+      text: expect.stringContaining('23:59:59'),
+    });
   });
 });

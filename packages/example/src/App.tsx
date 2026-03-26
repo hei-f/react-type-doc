@@ -119,7 +119,7 @@ type PanelMode = 'classic' | 'codeMirror';
 function App() {
   const [selectedType, setSelectedType] = useState('ComplexPropsComponent');
   const [viewMode, setViewMode] = useState<ViewMode>('viewer');
-  const [panelMode, setPanelMode] = useState<PanelMode>('classic');
+  const [panelMode, setPanelMode] = useState<PanelMode>('codeMirror');
 
   // 预加载 Monaco（数据对比等视图仍使用 @monaco-editor/react）
   useEffect(() => {

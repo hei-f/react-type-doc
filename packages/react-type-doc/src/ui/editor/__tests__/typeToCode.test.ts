@@ -824,6 +824,31 @@ describe('getClickableRanges', () => {
     expect(semanticRanges.length).toBeGreaterThan(0);
   });
 
+  it('should keep semantic ranges for structured generic display names', () => {
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        StructuredValue: {
+          kind: 'object',
+          text: 'StructuredValue',
+          properties: {},
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+    const typeInfo = reader.getRaw('StructuredValue')!;
+    const { code, semanticRanges } = typeInfoToCodeWithMeta(
+      typeInfo,
+      reader,
+      'Wrapper<{ value: Foo }, [Bar, Baz]>',
+    );
+
+    expect(code).toContain('Wrapper<{ value: Foo }, [Bar, Baz]>');
+    expect(semanticRanges.length).toBeGreaterThan(0);
+  });
+
   it('should simplify tuple optional member syntax', () => {
     expect(simplifyOptionalTupleMemberSyntax('[(string | undefined)?]')).toBe(
       '[string?]',

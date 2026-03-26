@@ -3,7 +3,11 @@
  * @description 将 TypeInfo 转换为格式化的 TypeScript 代码，供 CodeMirror / 只读代码面板渲染
  */
 
-import type { FunctionSignature, TypeInfo, FullTypeInfo } from '../../shared/types';
+import type {
+  FunctionSignature,
+  TypeInfo,
+  FullTypeInfo,
+} from '../../shared/types';
 import type { PropsDocReader } from '../../runtime/reader';
 import { RENDER_TYPE } from '../../runtime/renderTypes';
 import {
@@ -180,6 +184,14 @@ export interface ClickableRange {
   fieldName?: string;
 }
 
+interface ClickableOffsetRange {
+  start: number;
+  end: number;
+  typeName: string;
+  typeInfo: TypeInfo;
+  fieldName?: string;
+}
+
 /**
  * 将 TypeInfo 转换为 TypeScript 代码字符串
  * @param typeInfo 类型信息
@@ -344,7 +356,9 @@ function formatStructuredTypeText(text: string): string {
       const baseName = trimmed.slice(0, genericStart).trimEnd();
       const argsText = trimmed.slice(genericStart + 1, genericEnd);
       const args = splitTopLevelSegments(argsText, [',']);
-      const formattedArgs = args.map((arg) => formatStructuredTypeText(arg.text));
+      const formattedArgs = args.map((arg) =>
+        formatStructuredTypeText(arg.text),
+      );
 
       if (formattedArgs.every((arg) => !arg.includes('\n'))) {
         return `${baseName}<${formattedArgs.join(', ')}>`;
@@ -621,7 +635,7 @@ export function getClickableRanges(
   typeInfo: TypeInfo,
   reader: PropsDocReader,
 ): ClickableRange[] {
-  const ranges: ClickableRange[] = [];
+  const offsetRanges: ClickableOffsetRange[] = [];
   const resolved = reader.resolveRef(typeInfo);
   const renderInfo = reader.getTypeRenderInfo(resolved);
 
@@ -632,21 +646,314 @@ export function getClickableRanges(
       inner.unionTypes &&
       inner.unionTypes.length > 0
     ) {
-      extractUnionClickableRanges(code, inner.unionTypes, reader, ranges);
-      return ranges;
+      extractUnionClickableRanges(
+        code,
+        inner.unionTypes,
+        reader,
+        offsetRanges,
+        0,
+        1,
+      );
+      return convertClickableOffsetRanges(code, offsetRanges);
     }
   }
 
   if (renderInfo.type === RENDER_TYPE.UNION) {
-    extractUnionClickableRanges(code, renderInfo.types, reader, ranges);
+    extractUnionClickableRanges(
+      code,
+      renderInfo.types,
+      reader,
+      offsetRanges,
+      0,
+      1,
+    );
   } else if (
     renderInfo.type === RENDER_TYPE.OBJECT ||
     renderInfo.type === RENDER_TYPE.INLINE_OBJECT
   ) {
-    extractObjectClickableRanges(code, resolved, reader, ranges);
+    extractObjectClickableRanges(code, resolved, reader, offsetRanges, 0, 0);
   }
 
-  return ranges;
+  return convertClickableOffsetRanges(code, offsetRanges);
+}
+
+/**
+ * 将偏移范围转换为 CodeMirror 可点击范围
+ */
+function convertClickableOffsetRanges(
+  code: string,
+  offsetRanges: ClickableOffsetRange[],
+): ClickableRange[] {
+  if (offsetRanges.length === 0) {
+    return [];
+  }
+
+  const lineStarts = buildLineStarts(code);
+  return offsetRanges.map((range) => {
+    const start = offsetToPosition(lineStarts, range.start);
+    const end = offsetToPosition(lineStarts, range.end);
+
+    return {
+      range: {
+        startLine: start.line,
+        startColumn: start.column,
+        endLine: end.line,
+        endColumn: end.column,
+      },
+      typeName: range.typeName,
+      typeInfo: range.typeInfo,
+      ...(range.fieldName ? { fieldName: range.fieldName } : {}),
+    };
+  });
+}
+
+function addClickableOffsetRange(
+  ranges: ClickableOffsetRange[],
+  start: number,
+  end: number,
+  typeName: string,
+  typeInfo: TypeInfo,
+  fieldName?: string,
+): void {
+  if (start >= end) {
+    return;
+  }
+
+  ranges.push({
+    start,
+    end,
+    typeName,
+    typeInfo,
+    ...(fieldName ? { fieldName } : {}),
+  });
+}
+
+function collectDirectClickableRange(
+  code: string,
+  searchText: string,
+  typeInfo: TypeInfo,
+  reader: PropsDocReader,
+  ranges: ClickableOffsetRange[],
+  baseOffset: number,
+  fieldName?: string,
+): void {
+  if (!searchText) {
+    return;
+  }
+
+  const target = reader.getNavigationTarget(
+    typeInfo,
+    reader.resolveRef(typeInfo).text || '',
+  );
+  if (!target) {
+    return;
+  }
+
+  const startIndex = code.indexOf(searchText);
+  if (startIndex < 0) {
+    return;
+  }
+
+  addClickableOffsetRange(
+    ranges,
+    baseOffset + startIndex,
+    baseOffset + startIndex + searchText.length,
+    target.name,
+    target.typeInfo,
+    fieldName,
+  );
+}
+
+function collectClickableRangesFromTypeSegment(
+  code: string,
+  typeInfo: TypeInfo,
+  reader: PropsDocReader,
+  ranges: ClickableOffsetRange[],
+  baseOffset: number,
+  indentLevel: number,
+  allowDirectClick: boolean,
+  fieldName?: string,
+): void {
+  const resolved = reader.resolveRef(typeInfo);
+  const renderInfo = reader.getTypeRenderInfo(resolved);
+
+  switch (renderInfo.type) {
+    case RENDER_TYPE.OBJECT:
+      if (allowDirectClick) {
+        collectDirectClickableRange(
+          code,
+          renderInfo.name,
+          typeInfo,
+          reader,
+          ranges,
+          baseOffset,
+          fieldName,
+        );
+      }
+      return;
+    case RENDER_TYPE.CUSTOM_EXPANDABLE: {
+      const inner = renderInfo.resolved;
+      if (
+        inner.kind === 'union' &&
+        inner.unionTypes &&
+        inner.unionTypes.length > 0
+      ) {
+        if (code.includes('|')) {
+          extractUnionClickableRanges(
+            code,
+            inner.unionTypes,
+            reader,
+            ranges,
+            baseOffset,
+            1,
+          );
+          return;
+        }
+      }
+
+      if (allowDirectClick) {
+        collectDirectClickableRange(
+          code,
+          renderInfo.name,
+          typeInfo,
+          reader,
+          ranges,
+          baseOffset,
+          fieldName,
+        );
+      }
+      return;
+    }
+    case RENDER_TYPE.UNION:
+      extractUnionClickableRanges(
+        code,
+        renderInfo.types,
+        reader,
+        ranges,
+        baseOffset,
+        indentLevel,
+      );
+      return;
+    case RENDER_TYPE.ARRAY: {
+      if (!renderInfo.elementType) {
+        return;
+      }
+
+      const elementCode = renderTypeTextCode(
+        renderInfo.elementType,
+        reader,
+        indentLevel,
+      );
+      const elementIndex = code.indexOf(elementCode);
+      if (elementIndex < 0) {
+        return;
+      }
+
+      collectClickableRangesFromTypeSegment(
+        code.slice(elementIndex, elementIndex + elementCode.length),
+        renderInfo.elementType,
+        reader,
+        ranges,
+        baseOffset + elementIndex,
+        indentLevel,
+        true,
+        fieldName,
+      );
+      return;
+    }
+    case RENDER_TYPE.TUPLE: {
+      const elements = renderInfo.elements ?? [];
+      let searchCursor = 0;
+
+      for (const element of elements) {
+        const elementCode = renderTypeTextCode(element, reader, indentLevel);
+        const elementIndex = code.indexOf(elementCode, searchCursor);
+        if (elementIndex < 0) {
+          continue;
+        }
+
+        collectClickableRangesFromTypeSegment(
+          code.slice(elementIndex, elementIndex + elementCode.length),
+          element,
+          reader,
+          ranges,
+          baseOffset + elementIndex,
+          indentLevel,
+          true,
+          fieldName,
+        );
+        searchCursor = elementIndex + elementCode.length;
+      }
+      return;
+    }
+    case RENDER_TYPE.FUNCTION: {
+      const signatures = renderInfo.signatures ?? [];
+      let searchCursor = 0;
+
+      for (const signature of signatures) {
+        for (const parameter of signature.parameters) {
+          const parameterCode = indentFollowingLines(
+            formatStructuredTypeText(
+              renderTypeTextCode(parameter.type, reader, indentLevel + 1),
+            ),
+            '  '.repeat(indentLevel + 1),
+          );
+          const parameterIndex = code.indexOf(parameterCode, searchCursor);
+          if (parameterIndex < 0) {
+            continue;
+          }
+
+          collectClickableRangesFromTypeSegment(
+            code.slice(parameterIndex, parameterIndex + parameterCode.length),
+            parameter.type,
+            reader,
+            ranges,
+            baseOffset + parameterIndex,
+            indentLevel + 1,
+            true,
+            parameter.name,
+          );
+          searchCursor = parameterIndex + parameterCode.length;
+        }
+
+        const returnCode = indentFollowingLines(
+          formatStructuredTypeText(
+            renderTypeTextCode(signature.returnType, reader, indentLevel + 1),
+          ),
+          '  '.repeat(indentLevel),
+        );
+        const returnIndex = code.indexOf(returnCode, searchCursor);
+        if (returnIndex < 0) {
+          continue;
+        }
+
+        collectClickableRangesFromTypeSegment(
+          code.slice(returnIndex, returnIndex + returnCode.length),
+          signature.returnType,
+          reader,
+          ranges,
+          baseOffset + returnIndex,
+          indentLevel + 1,
+          true,
+          fieldName,
+        );
+        searchCursor = returnIndex + returnCode.length;
+      }
+      return;
+    }
+    case RENDER_TYPE.INLINE_OBJECT:
+      extractObjectClickableRanges(
+        code,
+        resolved,
+        reader,
+        ranges,
+        baseOffset,
+        indentLevel,
+      );
+      return;
+    default:
+      return;
+  }
 }
 
 /**
@@ -656,47 +963,30 @@ function extractUnionClickableRanges(
   code: string,
   members: TypeInfo[],
   reader: PropsDocReader,
-  ranges: ClickableRange[],
+  ranges: ClickableOffsetRange[],
+  baseOffset: number,
+  indentLevel: number,
 ): void {
-  const lines = code.split('\n');
+  let searchCursor = 0;
 
-  lines.forEach((line, lineIndex) => {
-    if (!line.includes('|')) return;
+  for (const member of members) {
+    const memberCode = renderTypeTextCode(member, reader, indentLevel);
+    const memberIndex = code.indexOf(memberCode, searchCursor);
+    if (memberIndex < 0) {
+      continue;
+    }
 
-    members.forEach((member) => {
-      const resolved = reader.resolveRef(member);
-      const target = reader.getNavigationTarget(member, resolved.text || '');
-      if (!target) return;
-
-      const renderInfo = reader.getTypeRenderInfo(resolved);
-
-      let searchText = '';
-      if (
-        renderInfo.type === RENDER_TYPE.OBJECT ||
-        renderInfo.type === RENDER_TYPE.CUSTOM_EXPANDABLE
-      ) {
-        searchText = renderInfo.name;
-      } else if (renderInfo.type === RENDER_TYPE.INLINE_OBJECT) {
-        return;
-      }
-
-      if (!searchText || !line.includes(searchText)) return;
-
-      const startColumn = line.indexOf(searchText) + 1;
-      const endColumn = startColumn + searchText.length;
-
-      ranges.push({
-        range: {
-          startLine: lineIndex + 1,
-          startColumn,
-          endLine: lineIndex + 1,
-          endColumn,
-        },
-        typeName: target.name,
-        typeInfo: target.typeInfo,
-      });
-    });
-  });
+    collectClickableRangesFromTypeSegment(
+      code.slice(memberIndex, memberIndex + memberCode.length),
+      member,
+      reader,
+      ranges,
+      baseOffset + memberIndex,
+      indentLevel,
+      true,
+    );
+    searchCursor = memberIndex + memberCode.length;
+  }
 }
 
 /**
@@ -706,84 +996,60 @@ function extractObjectClickableRanges(
   code: string,
   typeInfo: FullTypeInfo,
   reader: PropsDocReader,
-  ranges: ClickableRange[],
+  ranges: ClickableOffsetRange[],
+  baseOffset: number,
+  indentLevel: number,
 ): void {
   const lines = code.split('\n');
   const propEntries = reader.getPropertyEntries(typeInfo);
 
   propEntries.forEach(([propName, propInfo]) => {
-    const resolved = reader.resolveRef(propInfo);
-    const target = reader.getNavigationTarget(propInfo, resolved.text || '');
-    if (!target) return;
+    const propTypeCode = renderTypeTextCode(propInfo, reader, indentLevel + 1);
 
-    const renderInfo = reader.getTypeRenderInfo(resolved);
-
-    let searchText = '';
-    if (
-      renderInfo.type === RENDER_TYPE.OBJECT ||
-      renderInfo.type === RENDER_TYPE.CUSTOM_EXPANDABLE
-    ) {
-      searchText = renderInfo.name;
-    } else if (renderInfo.type === RENDER_TYPE.ARRAY) {
-      const elem = renderInfo.elementType;
-      if (!reader.isExpandable(elem)) {
-        return;
-      }
-      const elemResolved = reader.resolveRef(elem);
-      const elemRenderInfo = reader.getTypeRenderInfo(elemResolved);
-      if (
-        elemRenderInfo.type === RENDER_TYPE.OBJECT ||
-        elemRenderInfo.type === RENDER_TYPE.CUSTOM_EXPANDABLE
-      ) {
-        searchText = elemRenderInfo.name;
-      } else if (elemRenderInfo.type === RENDER_TYPE.UNION) {
-        searchText = reader.getDisplayName(
-          elemResolved,
-          elemResolved.text ?? '',
-        );
-      } else if (elemRenderInfo.type === RENDER_TYPE.INLINE_OBJECT) {
-        return;
-      } else {
-        return;
-      }
-    } else if (renderInfo.type === RENDER_TYPE.INLINE_OBJECT) {
-      return;
-    }
-
-    if (!searchText) return;
-
-    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    let lineOffset = 0;
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
       const line = lines[lineIndex]!;
 
-      if (!line.includes(`${propName}:`) && !line.includes(`${propName}?:`))
+      if (!line.includes(`${propName}:`) && !line.includes(`${propName}?:`)) {
+        lineOffset += line.length + 1;
         continue;
+      }
 
       const colonIndex = line.indexOf(':');
-      if (colonIndex === -1) continue;
+      if (colonIndex === -1) {
+        lineOffset += line.length + 1;
+        continue;
+      }
 
       const afterColon = line.substring(colonIndex + 1);
       const typeStartInAfterColon = afterColon.search(/\S/);
-      if (typeStartInAfterColon === -1) continue;
+      if (typeStartInAfterColon === -1) {
+        lineOffset += line.length + 1;
+        continue;
+      }
 
-      const startColumn = colonIndex + 1 + typeStartInAfterColon + 1;
+      const segmentStart = lineOffset + colonIndex + 1 + typeStartInAfterColon;
+      const segmentEnd = segmentStart + propTypeCode.length;
+      if (segmentEnd > code.length) {
+        lineOffset += line.length + 1;
+        continue;
+      }
 
-      const afterTypeStart = afterColon.slice(typeStartInAfterColon);
-      if (!afterTypeStart.startsWith(searchText)) continue;
+      if (code.slice(segmentStart, segmentEnd) !== propTypeCode) {
+        lineOffset += line.length + 1;
+        continue;
+      }
 
-      const endColumn = startColumn + searchText.length;
-
-      ranges.push({
-        range: {
-          startLine: lineIndex + 1,
-          startColumn,
-          endLine: lineIndex + 1,
-          endColumn,
-        },
-        typeName: target.name,
-        typeInfo: target.typeInfo,
-        fieldName: propName,
-      });
-
+      collectClickableRangesFromTypeSegment(
+        code.slice(segmentStart, segmentEnd),
+        propInfo,
+        reader,
+        ranges,
+        baseOffset + segmentStart,
+        indentLevel + 1,
+        true,
+        propName,
+      );
       break;
     }
   });
@@ -796,7 +1062,14 @@ function buildSemanticRanges(
   displayName: string,
 ): SemanticRangeMeta[] {
   const offsetRanges: SemanticOffsetRange[] = [];
-  collectSemanticOffsetRanges(code, typeInfo, reader, displayName, offsetRanges, 0);
+  collectSemanticOffsetRanges(
+    code,
+    typeInfo,
+    reader,
+    displayName,
+    offsetRanges,
+    0,
+  );
 
   if (offsetRanges.length === 0) {
     return [];
@@ -958,7 +1231,12 @@ function collectBaseTypeSemanticOffsetRanges(
   switch (renderInfo.type) {
     case RENDER_TYPE.OBJECT:
     case RENDER_TYPE.CUSTOM_EXPANDABLE:
-      collectDisplayNameSemanticRanges(ranges, renderInfo.name, code, baseOffset);
+      collectDisplayNameSemanticRanges(
+        ranges,
+        renderInfo.name,
+        code,
+        baseOffset,
+      );
       return;
     case RENDER_TYPE.UNION: {
       let searchCursor = 0;
@@ -1201,13 +1479,23 @@ function collectSemanticOffsetRanges(
   if (renderInfo.type === RENDER_TYPE.UNION) {
     collectDisplayNameSemanticRanges(ranges, displayName, code, baseOffset);
 
-    collectUnionSemanticOffsetRanges(code, renderInfo.types, reader, ranges, baseOffset);
+    collectUnionSemanticOffsetRanges(
+      code,
+      renderInfo.types,
+      reader,
+      ranges,
+      baseOffset,
+    );
     return;
   }
 
   if (renderInfo.type === RENDER_TYPE.CUSTOM_EXPANDABLE) {
     const inner = renderInfo.resolved;
-    if (inner.kind === 'union' && inner.unionTypes && inner.unionTypes.length > 0) {
+    if (
+      inner.kind === 'union' &&
+      inner.unionTypes &&
+      inner.unionTypes.length > 0
+    ) {
       collectDisplayNameSemanticRanges(ranges, displayName, code, baseOffset);
       collectUnionSemanticOffsetRanges(
         code,
@@ -1275,7 +1563,10 @@ function collectObjectSemanticOffsetRanges(
     );
 
     const propTypeCode = renderTypeTextCode(propInfo, reader, 1);
-    const typeStart = code.indexOf(propTypeCode, markerIndex + propMarker.length);
+    const typeStart = code.indexOf(
+      propTypeCode,
+      markerIndex + propMarker.length,
+    );
     const propRangeKind = getSemanticRangeKindForTypeInfo(propInfo, reader);
 
     if (typeStart >= 0 && isSimpleSemanticTypeText(propTypeCode)) {
@@ -1540,7 +1831,11 @@ function findMatchingDelimiter(
         if (braceDepth === 0 && openChar === '{' && index > openIndex) {
           return index;
         }
-      } else if (closeChar === '>' && angleDepth > 0 && text[index - 1] !== '=') {
+      } else if (
+        closeChar === '>' &&
+        angleDepth > 0 &&
+        text[index - 1] !== '='
+      ) {
         angleDepth -= 1;
         if (angleDepth === 0 && openChar === '<' && index > openIndex) {
           return index;
@@ -1778,7 +2073,11 @@ function collectStructuredTypeSemanticRanges(
   const equalsIndex = findTopLevelEqualsIndex(segmentText);
   if (equalsIndex > 0) {
     const left = trimTextRange(segmentText, 0, equalsIndex);
-    const right = trimTextRange(segmentText, equalsIndex + 1, segmentText.length);
+    const right = trimTextRange(
+      segmentText,
+      equalsIndex + 1,
+      segmentText.length,
+    );
     if (left) {
       collectStructuredTypeSemanticRanges(
         left.text,
@@ -1809,7 +2108,10 @@ function collectStructuredTypeSemanticRanges(
   }
 
   const outerParensEnd = findMatchingDelimiter(segmentText, 0, '(', ')');
-  if (segmentText.startsWith('(') && outerParensEnd === segmentText.length - 1) {
+  if (
+    segmentText.startsWith('(') &&
+    outerParensEnd === segmentText.length - 1
+  ) {
     collectStructuredTypeSemanticRanges(
       segmentText.slice(1, -1),
       ranges,
@@ -1890,7 +2192,10 @@ function collectStructuredTypeSemanticRanges(
         continue;
       }
 
-      const colonIndex = entryText.indexOf(':', propertyNameIndex + propertyName.length);
+      const colonIndex = entryText.indexOf(
+        ':',
+        propertyNameIndex + propertyName.length,
+      );
       if (colonIndex < 0) {
         continue;
       }
@@ -1908,7 +2213,11 @@ function collectStructuredTypeSemanticRanges(
           propertyName.length,
       );
 
-      const typeText = trimTextRange(entryText, colonIndex + 1, entryText.length);
+      const typeText = trimTextRange(
+        entryText,
+        colonIndex + 1,
+        entryText.length,
+      );
       if (!typeText) {
         continue;
       }

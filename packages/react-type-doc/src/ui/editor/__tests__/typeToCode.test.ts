@@ -542,6 +542,110 @@ describe('getClickableRanges', () => {
     expect(typeNames.length).toBeGreaterThan(0);
   });
 
+  it('should identify clickable nested type names in function parameters', () => {
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        FunctionTypes: {
+          kind: 'object',
+          text: 'FunctionTypes',
+          properties: {
+            onCustomError: {
+              kind: 'function',
+              text: '(error: CustomError) => void',
+              signatures: [
+                {
+                  parameters: [
+                    {
+                      name: 'error',
+                      type: {
+                        kind: 'object',
+                        text: 'CustomError',
+                        properties: {
+                          code: {
+                            kind: 'primitive',
+                            text: 'number',
+                            required: true,
+                          },
+                        },
+                      },
+                    },
+                  ],
+                  returnType: { kind: 'primitive', text: 'void' },
+                },
+              ],
+              required: true,
+            },
+          },
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+    const typeInfo = reader.getRaw('FunctionTypes')!;
+    const code = typeInfoToCode(typeInfo, reader, 'FunctionTypes');
+    const ranges = getClickableRanges(code, typeInfo, reader);
+
+    expect(code).toContain('CustomError');
+    expect(ranges.map((range) => range.typeName)).toContain('CustomError');
+  });
+
+  it('should identify clickable tuple element type names', () => {
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        TupleTypes: {
+          kind: 'object',
+          text: 'TupleTypes',
+          properties: {
+            objectTuple: {
+              kind: 'tuple',
+              text: '[UserInfo, PostInfo]',
+              tupleElements: [
+                {
+                  kind: 'object',
+                  text: 'UserInfo',
+                  properties: {
+                    id: {
+                      kind: 'primitive',
+                      text: 'number',
+                      required: true,
+                    },
+                  },
+                },
+                {
+                  kind: 'object',
+                  text: 'PostInfo',
+                  properties: {
+                    title: {
+                      kind: 'primitive',
+                      text: 'string',
+                      required: true,
+                    },
+                  },
+                },
+              ],
+              required: true,
+            },
+          },
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+    const typeInfo = reader.getRaw('TupleTypes')!;
+    const code = typeInfoToCode(typeInfo, reader, 'TupleTypes');
+    const ranges = getClickableRanges(code, typeInfo, reader);
+    const typeNames = ranges.map((range) => range.typeName);
+
+    expect(code).toContain('UserInfo');
+    expect(code).toContain('PostInfo');
+    expect(typeNames).toContain('UserInfo');
+    expect(typeNames).toContain('PostInfo');
+  });
+
   it('should return empty array for primitive types', () => {
     const mockData: OutputResult = {
       generatedAt: '2026-03-23T00:00:00.000Z',

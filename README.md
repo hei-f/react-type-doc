@@ -348,7 +348,7 @@ npx react-type-doc
 
 #### 内置 UI 组件
 
-提供 **`TypeDocPanel`**（结构化 DOM）与 **`TypeDocEditorPanel`** / **`TypeDocEditorPanelLazy`**（只读 CodeMirror）；共用同一 `data` + `typeKey` 与导航语义。导出 `en`、`zhCN` 等 locale。
+提供 **`TypeDocPanel`**（结构化 DOM）与 **`TypeDocEditorPanel`** / **`TypeDocEditorPanelLazy`**（只读 CodeMirror）；共用同一 `data` + `typeKey` 与导航语义。导出 `en`、`zhCN` 等 locale，编辑器所需的运行时依赖会随 `react-type-doc` 一起安装。
 
 ```tsx
 import { TypeDocPanel, zhCN } from 'react-type-doc/ui';
@@ -365,7 +365,7 @@ function App() {
 }
 ```
 
-**依赖**：`react`、`react-dom`、`styled-components` 为 peer，须在应用中安装。使用 **CodeMirror 面板**时还需安装 `@uiw/react-codemirror` 与各 `@codemirror/*` 等（见包内 `peerDependencies` / `peerDependenciesMeta`，均为 optional peer，由应用解析）。详情见 [`packages/react-type-doc/README.md`](packages/react-type-doc/README.md)。
+**依赖**：`react`、`react-dom`、`styled-components` 为 peer，须在应用中安装。`CodeMirror` 面板所需的 `@uiw/react-codemirror` 与各 `@codemirror/*` 运行时包会随 `react-type-doc` 一起安装，无需单独处理。详情见 [`packages/react-type-doc/README.md`](packages/react-type-doc/README.md)。
 
 #### 自定义渲染
 

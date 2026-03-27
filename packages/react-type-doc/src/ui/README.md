@@ -47,14 +47,14 @@ UI 层共享的渲染辅助。
 1. 先通过 CLI 生成 JSON。
 2. 把同一份 `data` 传给 `TypeDocPanel` 或 `TypeDocEditorPanel`。
 3. 用 `typeKey` 对齐 JSON 的 `keys`，再通过面板内部导航展开子类型。
-4. 如果需要按需加载 CodeMirror 依赖，使用 `TypeDocEditorPanelLazy`。
+4. 如果需要按需加载编辑器面板，使用 `TypeDocEditorPanelLazy`。
 
 ## 关键注意事项
 
 - UI 只消费生成结果，不解析源码。
 - `TypeDocPanel` 和 `TypeDocEditorPanel` 依赖同一份 `OutputResult` 和 `PropsDocReader`，显示规则应保持一致。
 - `typeKey` 必须与 JSON 的 `keys` 一致，否则面板无法定位目标类型。
-- 使用 `TypeDocEditorPanel` / `TypeDocEditorPanelLazy` 时，应用侧需要安装 CodeMirror 相关 optional peer 依赖。
+- 使用 `TypeDocEditorPanel` / `TypeDocEditorPanelLazy` 时，不需要额外安装 CodeMirror 相关依赖；它们会随 `react-type-doc` 一起提供。
 - 泛型展示优先使用结构化 `genericParameters`；如果数据里没有这份元数据，则回退到已有的 `name` / `text`，保持旧 JSON 兼容。
 
 ## 相关文档

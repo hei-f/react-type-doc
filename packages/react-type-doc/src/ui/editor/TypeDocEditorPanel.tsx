@@ -37,7 +37,6 @@ import {
   EmptyState,
 } from '../shared/styled';
 import { en } from '../shared/locale';
-import { formatTypeDeclarationName } from '../shared/generic';
 import {
   CODE_MIRROR_CLICKABLE_TYPE_THEME,
   CODE_MIRROR_COMPONENT_ROOT_STYLE,
@@ -212,12 +211,7 @@ export const TypeDocEditorPanel: React.FC<TypeDocPanelProps> = (props) => {
 
   const resolved = reader.resolveRef(typeInfo);
 
-  const rootDisplayName = resolved.genericParameters?.length
-    ? formatTypeDeclarationName(
-        reader.getDisplayName(resolved, typeKey),
-        resolved.genericParameters,
-      )
-    : reader.getDisplayName(resolved, typeKey);
+  const rootDisplayName = reader.getPreferredDisplayName(resolved, typeKey);
   const rootDisplayTitle = titlePrefix
     ? `${titlePrefix} - ${rootDisplayName}`
     : rootDisplayName;
@@ -229,12 +223,7 @@ export const TypeDocEditorPanel: React.FC<TypeDocPanelProps> = (props) => {
   const isNestedUnion = isInNestedView && resolvedCurrentType?.kind === 'union';
 
   const displayTypeName = resolvedCurrentType
-    ? resolvedCurrentType.genericParameters?.length
-      ? formatTypeDeclarationName(
-          reader.getDisplayName(resolvedCurrentType, currentTitle),
-          resolvedCurrentType.genericParameters,
-        )
-      : reader.getDisplayName(resolvedCurrentType, currentTitle)
+    ? reader.getPreferredDisplayName(resolvedCurrentType, currentTitle)
     : currentTitle;
 
   const propEntries = reader.getPropertyEntries(currentTypeInfoToRender);

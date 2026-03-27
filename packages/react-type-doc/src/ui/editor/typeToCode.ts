@@ -10,13 +10,13 @@ import type {
 } from '../../shared/types';
 import type { PropsDocReader } from '../../runtime/reader';
 import { RENDER_TYPE } from '../../runtime/renderTypes';
+import type { TypeRenderInfo } from '../../runtime/renderTypes';
 import {
   CODE_MIRROR_BASE_TYPE_KEYWORDS,
   CODE_MIRROR_SEMANTIC_RANGE_KIND,
 } from './codeMirror/constants';
 import {
   formatGenericParameterList,
-  formatTypeDeclarationName,
 } from '../shared/generic';
 
 /** 供 CodeMirror JSDoc 装饰定位：与 pushJSDocComment 写入格式一一对应 */
@@ -192,6 +192,34 @@ interface ClickableOffsetRange {
   fieldName?: string;
 }
 
+function formatTypeHeaderName(
+  displayName: string,
+  resolved: FullTypeInfo,
+  renderInfo: TypeRenderInfo,
+): string {
+  const trimmed = displayName.trim();
+  if (trimmed.includes('<')) {
+    return trimmed;
+  }
+
+  const genericParameters = resolved.genericParameters;
+  if (!genericParameters || genericParameters.length === 0) {
+    return trimmed;
+  }
+
+  const shouldShowGenericParameters =
+    resolved.isGeneric === true ||
+    resolved.renderHint === 'generic' ||
+    renderInfo.type === RENDER_TYPE.FUNCTION;
+
+  if (!shouldShowGenericParameters) {
+    return trimmed;
+  }
+
+  const genericParametersText = formatGenericParameterList(genericParameters);
+  return genericParametersText ? `${trimmed}<${genericParametersText}>` : trimmed;
+}
+
 /**
  * 将 TypeInfo 转换为 TypeScript 代码字符串
  * @param typeInfo 类型信息
@@ -209,10 +237,7 @@ export function typeInfoToCodeWithMeta(
   const jsdocBlocks: JSDocBlockMeta[] = [];
   const resolved = reader.resolveRef(typeInfo);
   const renderInfo = reader.getTypeRenderInfo(resolved);
-  const declarationDisplayName = formatTypeDeclarationName(
-    displayName,
-    resolved.genericParameters,
-  );
+  const typeHeaderName = formatTypeHeaderName(displayName, resolved, renderInfo);
   let code = '';
 
   if (renderInfo.type === RENDER_TYPE.CUSTOM_EXPANDABLE) {
@@ -223,17 +248,17 @@ export function typeInfoToCodeWithMeta(
       inner.unionTypes.length > 0
     ) {
       code = renderNamedUnionTypeAliasCode(
-        declarationDisplayName,
+        typeHeaderName,
         inner,
         reader,
         jsdocBlocks,
       );
     } else {
-      code = `type ${declarationDisplayName} = ${renderTypeTextCode(resolved, reader, 0)};`;
+      code = `type ${typeHeaderName} = ${renderTypeTextCode(resolved, reader, 0)};`;
     }
   } else if (!isNested && renderInfo.type === RENDER_TYPE.UNION) {
     code = renderUnionTypeCode(
-      declarationDisplayName,
+      typeHeaderName,
       renderInfo.types,
       reader,
       resolved.description,
@@ -245,20 +270,20 @@ export function typeInfoToCodeWithMeta(
     renderInfo.type === RENDER_TYPE.INLINE_OBJECT
   ) {
     code = renderObjectTypeCode(
-      declarationDisplayName,
+      typeHeaderName,
       resolved,
       reader,
       jsdocBlocks,
     );
   } else {
-    code = `type ${declarationDisplayName} = ${renderTypeTextCode(resolved, reader, 0)};`;
+    code = `type ${typeHeaderName} = ${renderTypeTextCode(resolved, reader, 0)};`;
   }
 
   const semanticRanges = buildSemanticRanges(
     code,
     typeInfo,
     reader,
-    declarationDisplayName,
+    typeHeaderName,
   );
 
   return { code, jsdocBlocks, semanticRanges };

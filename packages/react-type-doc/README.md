@@ -41,7 +41,7 @@ const reader = PropsDocReader.create(typeData);
 <TypeDocPanel typeKey="Button" data={typeData} />
 ```
 
-`TypeDocEditorPanel` 与 `TypeDocEditorPanelLazy` 适合 CodeMirror 风格的代码面板；`TypeDocEditorPanelLazy` 可与 `Suspense` 搭配按需加载。
+`TypeDocEditorPanel` 与 `TypeDocEditorPanelLazy` 适合 CodeMirror 风格的代码面板；`TypeDocEditorPanelLazy` 可与 `Suspense` 搭配按需加载，相关运行时依赖会随 `react-type-doc` 一起安装。
 
 ## 关键注意事项
 
@@ -49,7 +49,7 @@ const reader = PropsDocReader.create(typeData);
 - `typeKey` 必须与 JSON 里的 `keys` 对齐，否则面板找不到目标类型。
 - `PropsDocReader.create(data)` 适合多份数据并存；`PropsDocReader.getInstance(data)` 适合全局共享一份数据。
 - 使用 `react-type-doc/ui` 时，应用需要自行安装 `react`、`react-dom`、`styled-components`。
-- 使用 `TypeDocEditorPanel` / `TypeDocEditorPanelLazy` 时，还需要应用侧安装 CodeMirror 相关的 optional peer 依赖。
+- 使用 `TypeDocEditorPanel` / `TypeDocEditorPanelLazy` 时，不需要额外安装 CodeMirror 相关依赖；它们会随 `react-type-doc` 一起提供。
 - 泛型展示依赖结构化元数据 `genericParameters`。当这份信息存在时，声明头会渲染完整泛型，例如 `interface Response<T = unknown, E = Error> {}`；如果只有旧的 `name` / `text`，则回退到兼容显示，不会从实例化结果自动反推原始泛型声明。
 
 ## 文档

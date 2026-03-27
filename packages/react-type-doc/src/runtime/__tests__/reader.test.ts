@@ -836,6 +836,57 @@ describe('PropsDocReader', () => {
       expect(reader.getDisplayName(normalType, 'fallback')).toBe('User');
     });
 
+    it('getPreferredDisplayName 应该优先展示实例化结果', () => {
+      const mockData: OutputResult = {
+        generatedAt: '2024-01-01T00:00:00.000Z',
+        keys: {},
+        typeRegistry: {},
+      };
+
+      const reader = PropsDocReader.create(mockData);
+
+      const stringBoxType: TypeInfo = {
+        name: 'Box<string>',
+        kind: 'object',
+        text: 'StringBox',
+        genericParameters: [{ name: 'T' }],
+        properties: {
+          value: { kind: 'primitive', text: 'string', required: true },
+        },
+      };
+      expect(reader.getPreferredDisplayName(stringBoxType, 'StringBox')).toBe(
+        'Box<string>',
+      );
+
+      const stringGenericType: TypeInfo = {
+        name: 'GenericComponentProps<T>',
+        kind: 'object',
+        text: 'GenericComponentProps<string>',
+        genericParameters: [{ name: 'T' }],
+        properties: {},
+      };
+      expect(
+        reader.getPreferredDisplayName(
+          stringGenericType,
+          'GenericComponentProps',
+        ),
+      ).toBe('GenericComponentProps<string>');
+
+      const genericDefinitionType: TypeInfo = {
+        name: 'Response<T = unknown, E = Error>',
+        kind: 'object',
+        text: 'Response<T = unknown, E = Error>',
+        genericParameters: [
+          { name: 'T', default: 'unknown' },
+          { name: 'E', default: 'Error' },
+        ],
+        isGeneric: true,
+      };
+      expect(
+        reader.getPreferredDisplayName(genericDefinitionType, 'Response'),
+      ).toBe('Response<T = unknown, E = Error>');
+    });
+
     it('getNavigationTarget 应该处理数组类型的导航', () => {
       const mockData: OutputResult = {
         generatedAt: '2024-01-01T00:00:00.000Z',

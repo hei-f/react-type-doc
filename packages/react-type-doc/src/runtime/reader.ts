@@ -130,6 +130,9 @@ function selectPreferredDisplayName(
 
   const nameIsAnonymousObject = isAnonymousObjectText(nameCandidate);
   const textIsAnonymousObject = isAnonymousObjectText(textCandidate);
+  if (nameIsAnonymousObject && textIsAnonymousObject) {
+    return nameCandidate;
+  }
   if (nameIsAnonymousObject !== textIsAnonymousObject) {
     return textIsAnonymousObject ? nameCandidate : textCandidate;
   }
@@ -476,18 +479,17 @@ export class PropsDocReader {
 
     // renderHint 优先：不可展开类型
     if (renderHint) {
-      const name = this.getPreferredDisplayName(resolved, text);
-
       switch (renderHint) {
         case 'builtin':
         case 'external':
         case 'index-access':
           return {
             type: RENDER_TYPE.EXTERNAL,
-            name,
+            name: this.getDisplayName(resolved, text),
           };
 
         case 'circular': {
+          const name = this.getPreferredDisplayName(resolved, text);
           const sourceHint = resolved.sourceFile
             ? `${resolved.sourceFile}${
                 resolved.sourceLine ? `:${resolved.sourceLine}` : ''

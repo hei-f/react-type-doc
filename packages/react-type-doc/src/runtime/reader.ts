@@ -15,6 +15,140 @@ import { getTypeName, isPrimitiveType, isTypeRef } from './utils';
 import { RENDER_TYPE } from './renderTypes';
 import type { TypeRenderInfo } from './renderTypes';
 
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function hasTypeSyntax(value: string): boolean {
+  return (
+    value.includes('<') ||
+    value.includes('>') ||
+    value.includes('[') ||
+    value.includes(']') ||
+    value.includes('(') ||
+    value.includes(')') ||
+    value.includes('|') ||
+    value.includes('&') ||
+    value.includes(',')
+  );
+}
+
+function isSimpleIdentifier(value: string): boolean {
+  return /^[A-Za-z_$][\w$]*$/.test(value);
+}
+
+function isAnonymousObjectText(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed.startsWith('{') && trimmed.endsWith('}');
+}
+
+function formatGenericParameterSignature(
+  genericParameters?: FullTypeInfo['genericParameters'],
+): string {
+  if (!genericParameters || genericParameters.length === 0) {
+    return '';
+  }
+
+  return genericParameters
+    .map((param) => {
+      let text = param.name;
+      if (param.constraint) {
+        text += ` extends ${param.constraint}`;
+      }
+      if (param.default) {
+        text += ` = ${param.default}`;
+      }
+      return text;
+    })
+    .join(', ');
+}
+
+function countGenericParameterReferences(
+  value: string,
+  genericParameters?: FullTypeInfo['genericParameters'],
+): number {
+  if (!genericParameters || genericParameters.length === 0) {
+    return 0;
+  }
+
+  let count = 0;
+  for (const param of genericParameters) {
+    const name = param.name.trim();
+    if (!name) {
+      continue;
+    }
+
+    const matches = value.match(new RegExp(`\\b${escapeRegExp(name)}\\b`, 'g'));
+    if (matches) {
+      count += matches.length;
+    }
+  }
+
+  return count;
+}
+
+function selectPreferredDisplayName(
+  resolved: FullTypeInfo,
+  fallback?: string,
+): string {
+  const name = resolved.name?.trim();
+  const text = resolved.text?.trim();
+  const fallbackName = fallback?.trim() || 'unknown';
+  const genericParameters = resolved.genericParameters;
+  const nameCandidate = name || text || fallbackName;
+  const textCandidate = text || nameCandidate;
+
+  if (resolved.isGeneric || resolved.renderHint === RENDER_HINT.Generic) {
+    if (hasTypeSyntax(nameCandidate)) {
+      return nameCandidate;
+    }
+
+    const genericSignature = formatGenericParameterSignature(genericParameters);
+    if (genericSignature) {
+      return `${nameCandidate}<${genericSignature}>`;
+    }
+
+    return nameCandidate;
+  }
+
+  if (nameCandidate === textCandidate) {
+    return nameCandidate;
+  }
+
+  const nameScore = countGenericParameterReferences(
+    nameCandidate,
+    genericParameters,
+  );
+  const textScore = countGenericParameterReferences(
+    textCandidate,
+    genericParameters,
+  );
+
+  if (textScore !== nameScore) {
+    return textScore < nameScore ? textCandidate : nameCandidate;
+  }
+
+  const nameIsAnonymousObject = isAnonymousObjectText(nameCandidate);
+  const textIsAnonymousObject = isAnonymousObjectText(textCandidate);
+  if (nameIsAnonymousObject !== textIsAnonymousObject) {
+    return textIsAnonymousObject ? nameCandidate : textCandidate;
+  }
+
+  const nameHasSyntax = hasTypeSyntax(nameCandidate);
+  const textHasSyntax = hasTypeSyntax(textCandidate);
+  if (textHasSyntax !== nameHasSyntax) {
+    return textHasSyntax ? textCandidate : nameCandidate;
+  }
+
+  const nameSimple = isSimpleIdentifier(nameCandidate);
+  const textSimple = isSimpleIdentifier(textCandidate);
+  if (nameSimple !== textSimple) {
+    return textSimple ? nameCandidate : textCandidate;
+  }
+
+  return textCandidate;
+}
+
 /**
  * Props 文档数据读取器
  * 封装类型解析逻辑，提供便捷的 API
@@ -252,6 +386,20 @@ export class PropsDocReader {
   }
 
   /**
+   * 获取优先展示的类型名称
+   * 已实例化类型优先使用具体结果，未实例化泛型保留泛型签名
+   */
+  getPreferredDisplayName(typeInfo: TypeInfo, fallback?: string): string {
+    const resolved = this.resolveRef(typeInfo);
+    const name = getTypeName(resolved);
+    if (name === 'Object' && fallback) {
+      return fallback;
+    }
+
+    return selectPreferredDisplayName(resolved, fallback);
+  }
+
+  /**
    * 获取点击导航的目标类型（处理数组元素情况）
    * 如果是数组且元素是对象，返回元素类型
    */
@@ -265,20 +413,25 @@ export class PropsDocReader {
     if (resolved.kind === 'array' && resolved.elementType) {
       const resolvedElement = this.resolveRef(resolved.elementType);
       if (resolvedElement.kind === 'object' && resolvedElement.properties) {
-        const elementName =
-          getTypeName(resolvedElement) ||
-          typeName.replace(/\[\]\s*$/, '').trim();
+        const elementName = this.getPreferredDisplayName(
+          resolvedElement,
+          typeName.replace(/\[\]\s*$/, '').trim(),
+        );
         return { typeInfo: resolvedElement, name: elementName };
       }
       if (this.isExpandable(resolved.elementType)) {
-        const elementName =
-          getTypeName(resolvedElement) ||
-          typeName.replace(/\[\]\s*$/, '').trim();
+        const elementName = this.getPreferredDisplayName(
+          resolvedElement,
+          typeName.replace(/\[\]\s*$/, '').trim(),
+        );
         return { typeInfo: resolvedElement, name: elementName };
       }
     }
 
-    return { typeInfo: resolved, name: typeName };
+    return {
+      typeInfo: resolved,
+      name: this.getPreferredDisplayName(resolved, typeName),
+    };
   }
 
   /**
@@ -323,7 +476,7 @@ export class PropsDocReader {
 
     // renderHint 优先：不可展开类型
     if (renderHint) {
-      const name = getTypeName(resolved);
+      const name = this.getPreferredDisplayName(resolved, text);
 
       switch (renderHint) {
         case 'builtin':
@@ -351,7 +504,7 @@ export class PropsDocReader {
         case 'truncated':
           return {
             type: RENDER_TYPE.DEFAULT,
-            text: name || text,
+            text: this.getPreferredDisplayName(resolved, text),
           };
 
         case 'generic':
@@ -390,7 +543,7 @@ export class PropsDocReader {
           // 先展示可点击的别名名称，点击后再展示联合成员
           // name 字段仅在检测到用户定义的类型别名时设置
           if (resolved.name) {
-            const unionName = getTypeName(resolved);
+            const unionName = this.getPreferredDisplayName(resolved, text);
             return {
               type: RENDER_TYPE.CUSTOM_EXPANDABLE,
               name: unionName,
@@ -433,7 +586,7 @@ export class PropsDocReader {
           };
         }
 
-        const name = this.getDisplayName(resolved, text);
+        const name = this.getPreferredDisplayName(resolved, text);
         return {
           type: RENDER_TYPE.OBJECT,
           name,

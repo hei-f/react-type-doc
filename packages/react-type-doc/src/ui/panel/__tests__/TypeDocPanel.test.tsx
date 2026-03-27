@@ -138,14 +138,14 @@ describe('TypeDocPanel', () => {
     expect(screen.getByText(/name/)).toBeTruthy();
   });
 
-  it('should render structured generic declaration heads', () => {
+  it('should render instantiated generic declaration heads first', () => {
     render(<TypeDocPanel typeKey="Response" data={genericMockData} />);
 
     expect(
       screen.getByText(
         (_, element) =>
           element?.textContent?.trim() ===
-          'interface Response<T = unknown, E = Error> {',
+          'interface Response<{ id: string }, { code: number }> {',
       ),
     ).toBeTruthy();
   });

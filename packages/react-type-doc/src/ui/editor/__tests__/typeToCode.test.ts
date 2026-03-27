@@ -102,7 +102,9 @@ describe('typeInfoToCode', () => {
       reader.getDisplayName(typeInfo, 'UserResponse'),
     );
 
-    expect(code).toContain('interface Response<T = unknown, E = Error> {');
+    expect(code).toContain(
+      'interface Response< { id: string }, { code: number } > {',
+    );
     expect(code).toContain('data:');
     expect(code).toContain('error:');
   });
@@ -259,6 +261,36 @@ describe('typeInfoToCode', () => {
     const code = typeInfoToCode(typeInfo, reader, 'GenericAlias');
 
     expect(code).toContain('type GenericAlias<T> = (value: T) => T;');
+  });
+
+  it('should keep instantiated generic display names intact', () => {
+    const mockData: OutputResult = {
+      generatedAt: '2026-03-23T00:00:00.000Z',
+      keys: {
+        StringBox: {
+          kind: 'object',
+          name: 'Box<string>',
+          text: 'StringBox',
+          genericParameters: [{ name: 'T' }],
+          properties: {
+            value: {
+              kind: 'primitive',
+              text: 'string',
+              required: true,
+            },
+          },
+        },
+      },
+      typeRegistry: {},
+    };
+
+    const reader = PropsDocReader.create(mockData);
+    const typeInfo = reader.getRaw('StringBox')!;
+    const displayName = reader.getPreferredDisplayName(typeInfo, 'StringBox');
+    const code = typeInfoToCode(typeInfo, reader, displayName);
+
+    expect(code).toContain('interface Box<string> {');
+    expect(code).toContain('value: string;');
   });
 
   it('should handle inline anonymous objects', () => {

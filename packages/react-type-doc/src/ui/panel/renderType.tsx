@@ -3,7 +3,6 @@ import type {
   FunctionSignature,
   TypeInfo,
   FullTypeInfo,
-  GenericParameterInfo,
 } from '../../shared/types';
 import { RENDER_TYPE } from '../../runtime/renderTypes';
 import type { TypeRenderInfo } from '../../runtime/renderTypes';
@@ -32,10 +31,9 @@ import { simplifyOptionalTupleMemberSyntax } from '../editor/typeToCode';
  */
 function renderTypeNameContent(
   name: string,
-  genericParameters?: GenericParameterInfo[] | null,
 ): React.ReactNode {
   const { baseName, genericParametersText } =
-    splitTypeNameAndGenericParameters(name, genericParameters);
+    splitTypeNameAndGenericParameters(name);
 
   return (
     <>
@@ -52,12 +50,11 @@ function renderTypeNameContent(
  */
 export function renderTypeNameWithGenerics(
   name: string,
-  genericParameters?: GenericParameterInfo[] | null,
 ): React.ReactNode {
   return (
     <TypeName>
       {' '}
-      {renderTypeNameContent(name, genericParameters)}
+      {renderTypeNameContent(name)}
       {' '}
     </TypeName>
   );
@@ -294,10 +291,7 @@ export function renderTypeText(
           }
           title={locale.circularRef(renderInfo.name, renderInfo.sourceHint)}
         >
-          {renderTypeNameContent(
-            renderInfo.name,
-            renderInfo.resolved.genericParameters,
-          )}
+          {renderTypeNameContent(renderInfo.name)}
         </ClickableTypeName>
       );
 
@@ -372,10 +366,7 @@ export function renderTypeText(
     case RENDER_TYPE.OBJECT: {
       const isExpandable = renderInfo.expandable;
       const isGeneric = reader.isGenericType(typeInfo);
-      const typeNameContent = renderTypeNameContent(
-        renderInfo.name,
-        renderInfo.resolved.genericParameters,
-      );
+      const typeNameContent = renderTypeNameContent(renderInfo.name);
 
       if (isExpandable) {
         return (
@@ -418,10 +409,7 @@ export function renderTypeText(
           }
           title={locale.clickToViewType}
         >
-          {renderTypeNameContent(
-            renderInfo.name,
-            renderInfo.resolved.genericParameters,
-          )}
+          {renderTypeNameContent(renderInfo.name)}
         </ClickableTypeName>
       );
 

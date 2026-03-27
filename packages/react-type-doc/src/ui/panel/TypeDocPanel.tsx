@@ -21,10 +21,7 @@ import {
 import type { TypeDocLocale } from '../shared/locale';
 import { en } from '../shared/locale';
 import type { TypeRenderContext } from '../shared/types';
-import {
-  formatTypeDeclarationName,
-  getBaseName,
-} from '../shared/generic';
+import { getBaseName } from '../shared/generic';
 import { renderTypeNameWithGenerics } from './renderType';
 import { renderDescription } from '../shared/renderDescription';
 import { renderPropertyLine, renderUnionTypeView } from './renderView';
@@ -87,13 +84,8 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
 
   const resolved = reader.resolveRef(typeInfo);
 
-  /** 包含泛型参数的完整类型名（用于代码块的 interface 声明） */
-  const rootDisplayName = resolved.genericParameters?.length
-    ? formatTypeDeclarationName(
-        reader.getDisplayName(resolved, typeKey),
-        resolved.genericParameters,
-      )
-    : reader.getDisplayName(resolved, typeKey);
+  /** 优先展示实例化结果，其次才回退到声明名 */
+  const rootDisplayName = reader.getPreferredDisplayName(resolved, typeKey);
 
   /** 使用实际类型名构建显示标题（不含 registry key 中的路径前缀） */
   const rootDisplayTitle = titlePrefix
@@ -148,12 +140,7 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
     : [];
 
   const displayTypeName = resolvedCurrentType
-    ? resolvedCurrentType.genericParameters?.length
-      ? formatTypeDeclarationName(
-          reader.getDisplayName(resolvedCurrentType, currentTitle),
-          resolvedCurrentType.genericParameters,
-        )
-      : reader.getDisplayName(resolvedCurrentType, currentTitle)
+    ? reader.getPreferredDisplayName(resolvedCurrentType, currentTitle)
     : currentTitle;
 
   const panelTitleText = isInNestedView
@@ -206,10 +193,7 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
               <>
                 <CodeLine>
                   <Keyword>interface</Keyword>
-                  {renderTypeNameWithGenerics(
-                    displayTypeName,
-                    resolvedCurrentType?.genericParameters,
-                  )}
+                  {renderTypeNameWithGenerics(displayTypeName)}
                   <Punctuation>{'{'}</Punctuation>
                 </CodeLine>
 
@@ -244,10 +228,7 @@ const TypeDocPanel: React.FC<TypeDocPanelProps> = (props) => {
               )}
               <CodeLine>
                 <Keyword>interface</Keyword>
-                {renderTypeNameWithGenerics(
-                  rootDisplayName,
-                  resolved.genericParameters,
-                )}
+                {renderTypeNameWithGenerics(rootDisplayName)}
                 <Punctuation>{'{'}</Punctuation>
               </CodeLine>
 

@@ -32,7 +32,7 @@ export function renderUnionTypeView(
   const resolved = context.reader.resolveRef(typeInfo);
   const unionTypes = resolved.unionTypes ?? [];
   const { baseName, genericParametersText } =
-    splitTypeNameAndGenericParameters(typeName, resolved.genericParameters);
+    splitTypeNameAndGenericParameters(typeName);
 
   return (
     <CodeContainer>
@@ -63,7 +63,7 @@ export function renderUnionTypeView(
         {unionTypes.map((unionMember: TypeInfo, idx: number) => {
           const resolvedMember = context.reader.resolveRef(unionMember);
           const renderInfo = context.reader.getTypeRenderInfo(unionMember);
-          const displayName = context.reader.getDisplayName(
+          const displayName = context.reader.getPreferredDisplayName(
             resolvedMember,
             context.locale.unionMember(idx + 1),
           );
@@ -75,10 +75,8 @@ export function renderUnionTypeView(
             indentLevel: 1,
             bracketLevel: 0,
           };
-          const memberNameParts = splitTypeNameAndGenericParameters(
-            displayName,
-            resolvedMember.genericParameters,
-          );
+          const memberNameParts =
+            splitTypeNameAndGenericParameters(displayName);
           const memberNameContent = (
             <>
               {memberNameParts.baseName}

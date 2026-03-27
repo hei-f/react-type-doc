@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-03-27
+
+### Fixed
+
+- `react-type-doc/ui` 现在会随包一起提供 CodeMirror 运行时依赖，并保持编辑器入口按需加载，消费者只需安装一次 `react-type-doc`
+- 运行时与 UI 面板现在优先展示已实例化的泛型名称，同时保持外部类型和匿名对象标题的简洁稳定
+
 ## [1.3.1] - 2026-03-26
 
 ### Added

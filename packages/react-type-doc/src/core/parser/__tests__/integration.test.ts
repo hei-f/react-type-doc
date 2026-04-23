@@ -139,7 +139,10 @@ describe('集成测试', () => {
       const typeInfo = parseTypeInfo(type!);
 
       expect(typeInfo).toBeDefined();
-      expect(typeInfo.renderHint).not.toBe('truncated');
+      expect('$ref' in typeInfo).toBe(false);
+      if (!('$ref' in typeInfo)) {
+        expect(typeInfo.renderHint).not.toBe('truncated');
+      }
 
       // 验证深层属性未被截断
       function findTruncated(info: any): boolean {

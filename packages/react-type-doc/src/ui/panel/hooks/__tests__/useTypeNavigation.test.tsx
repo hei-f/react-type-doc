@@ -53,7 +53,10 @@ describe('useTypeNavigation', () => {
     expect(result.current.currentTitle).toBe('Component - Parent');
 
     const parentType = result.current.reader?.getRaw('Parent');
-    const childType = parentType?.properties?.child;
+    const childType =
+      parentType && 'properties' in parentType
+        ? parentType.properties?.child
+        : undefined;
     if (!childType) {
       throw new Error('Expected child type to exist');
     }
@@ -66,9 +69,15 @@ describe('useTypeNavigation', () => {
     expect(result.current.currentTitle).toBe('.child { id }');
 
     act(() => {
+      const rawParent = result.current.reader?.getRaw('Parent');
       const childFrame =
-        result.current.reader?.getRaw('Parent')?.properties?.child;
-      const grandchildType = childFrame?.properties?.grandchild;
+        rawParent && 'properties' in rawParent
+          ? rawParent.properties?.child
+          : undefined;
+      const grandchildType =
+        childFrame && 'properties' in childFrame
+          ? childFrame.properties?.grandchild
+          : undefined;
       if (!grandchildType) {
         throw new Error('Expected grandchild type to exist');
       }

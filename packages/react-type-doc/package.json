@@ -1,6 +1,6 @@
 {
   "name": "react-type-doc",
-  "version": "1.3.5",
+  "version": "1.3.6",
   "description": "A powerful TypeScript type documentation generator for React components",
   "keywords": [
     "react",

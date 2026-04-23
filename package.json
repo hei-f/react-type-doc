@@ -57,7 +57,11 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "@codemirror/view": "6.40.0",
+      "@codemirror/language": "6.12.2"
+    }
   },
   "engines": {
     "node": ">=20.19.0",

@@ -107,6 +107,54 @@ describe('集成测试', () => {
     });
   });
 
+  describe('深度限制 -1 解除限制', () => {
+    it('maxDepth 为 -1 时不应截断深层嵌套类型', () => {
+      initParseOptions({ maxDepth: -1 });
+
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type Deep = {
+          l1: {
+            l2: {
+              l3: {
+                l4: {
+                  l5: {
+                    l6: {
+                      l7: {
+                        value: string;
+                      };
+                    };
+                  };
+                };
+              };
+            };
+          };
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'Deep');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      expect(typeInfo.renderHint).not.toBe('truncated');
+
+      // 验证深层属性未被截断
+      function findTruncated(info: any): boolean {
+        if (info?.renderHint === 'truncated') return true;
+        if (info?.properties) {
+          return Object.values(info.properties).some((p: any) =>
+            findTruncated(p),
+          );
+        }
+        return false;
+      }
+      expect(findTruncated(typeInfo)).toBe(false);
+    });
+  });
+
   describe('泛型约束', () => {
     it('应该处理泛型约束', () => {
       createTestFile(

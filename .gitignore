@@ -48,3 +48,7 @@ Thumbs.db
 .cursor/skills/*
 !.cursor/skills/react-type-doc/
 DETAILED_COMPARISON.md
+
+# External project directories (not part of this repo)
+morse-operateplatform/
+repro-external-type-any/

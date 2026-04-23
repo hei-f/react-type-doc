@@ -122,8 +122,8 @@ function parseTypeInfoRecursive(
 
   const config = getParseConfig();
 
-  // 4. 深度限制检查（对于复杂类型）
-  if (depth > config.maxDepth) {
+  // 4. 深度限制检查（对于复杂类型，-1 表示不限制）
+  if (config.maxDepth !== -1 && depth > config.maxDepth) {
     return {
       name: type.getText(),
       kind: 'unknown' as TypeCategory,

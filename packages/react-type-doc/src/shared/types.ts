@@ -202,13 +202,13 @@ export interface RegistryItem {
 
 /** 解析选项（可在配置中覆盖默认值） */
 export interface ParseOptions {
-  /** 最大递归深度 */
+  /** 最大递归深度（-1 表示不限制） */
   maxDepth?: number;
-  /** 类型文本最大显示长度 */
+  /** 类型文本最大显示长度（-1 表示不限制） */
   maxTypeTextLength?: number;
-  /** 详细类型文本最大显示长度 */
+  /** 详细类型文本最大显示长度（-1 表示不限制） */
   maxDetailedTypeTextLength?: number;
-  /** 类型文本最大缓存长度（超过此长度不缓存，内联更省空间） */
+  /** 类型文本最大缓存长度（超过此长度不缓存，内联更省空间；-1 表示不限制） */
   cacheMaxTypeTextLength?: number;
   /** 额外跳过深度解析的类型（精确匹配） */
   extraSkipTypes?: string[];

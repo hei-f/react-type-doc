@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] - 2026-04-23
+
+### Fixed
+
+- 修复当 tsconfig.json 未显式设置 `moduleResolution` 时，TypeScript 5.x 回退到 Classic 策略导致 node_modules 中的外部包类型无法解析，union 数组如 `(WidgetType | string)[]` 退化为 `any[]` 的问题
+
 ## [1.3.3] - 2026-04-23
 
 ### Added

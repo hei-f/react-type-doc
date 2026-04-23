@@ -6,7 +6,7 @@
 import fs from 'fs';
 import { pathToFileURL } from 'node:url';
 import path from 'path';
-import { Project, ts } from 'ts-morph';
+import { ModuleResolutionKind, Project, ts } from 'ts-morph';
 import { findComponentProps } from '../core/componentParser';
 import {
   clearTypeCache,
@@ -260,9 +260,21 @@ export async function runGenerate(): Promise<void> {
     // 解析 tsconfig 路径
     const tsConfigPath = pathResolver.resolve(config.tsConfigPath);
 
+    // 读取 tsconfig 判断是否已显式设置 moduleResolution
+    const rawTsConfig = ts.readConfigFile(tsConfigPath, ts.sys.readFile);
+    const userModuleResolution =
+      rawTsConfig.config?.compilerOptions?.moduleResolution;
+
     const project = new Project({
       tsConfigFilePath: tsConfigPath,
       skipAddingFilesFromTsConfig: false,
+      // 当 tsconfig 未显式设置 moduleResolution 时，默认使用 Node10
+      // 避免 TS 5.x 回退到 Classic 策略导致 node_modules 类型解析失败
+      ...(userModuleResolution
+        ? {}
+        : {
+            compilerOptions: { moduleResolution: ModuleResolutionKind.Node10 },
+          }),
     });
 
     console.log(

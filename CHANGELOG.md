@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.6] - 2026-04-23
+
+### Fixed
+
+- 回滚 CodeMirror 相关依赖升级，修复编辑器面板布局异常
+
 ## [1.3.5] - 2026-04-23
 
 ### Changed
@@ -12,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 升级 ts-morph 至 v28.0.0（内置 TypeScript 6.0.2 编译器）
 - 升级 TypeScript 至 v6.0.3
 - 升级 @types/node 至 v25、jsdom 至 v29、vitest 至 v4.1.5 等开发依赖
-- 升级 CodeMirror 相关依赖至最新 patch 版本
 - tsconfig 移除已废弃的 `downlevelIteration`，lib 升级至 ES2022
 
 ### Fixed

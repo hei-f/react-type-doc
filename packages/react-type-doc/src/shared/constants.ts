@@ -141,8 +141,8 @@ export const DEFAULT_SCAN_DIR_TYPES_ENTRY = 'doc.types.ts';
  * 提供合理的默认值，确保在没有用户配置时也能正常工作
  */
 export const DEFAULT_PARSE_OPTIONS = {
-  /** 最大递归深度，防止无限递归 */
-  maxDepth: 5,
+  /** 最大递归深度，-1 表示不限制 */
+  maxDepth: -1,
   /** 缓存键的最大文本长度 */
   cacheMaxTypeTextLength: 200,
   /** 是否启用源码位置信息 */

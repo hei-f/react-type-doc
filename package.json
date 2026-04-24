@@ -45,7 +45,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^15.2.11",
     "prettier": "^3.4.2",
-    "typescript-eslint": "^8.46.4"
+    "typescript-eslint": "^8.59.0"
   },
   "keywords": [
     "react",
@@ -57,7 +57,11 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "@codemirror/view": "6.40.0",
+      "@codemirror/language": "6.12.2"
+    }
   },
   "engines": {
     "node": ">=20.19.0",

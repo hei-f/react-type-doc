@@ -102,8 +102,11 @@ export function getCacheKey(type: Type, typeText: string): string | null {
 
   const config = getParseConfig();
 
-  // 3. 超长类型文本不缓存（内联更省空间，这些类型通常出现频率低）
-  if (typeText.length > config.cacheMaxTypeTextLength) {
+  // 3. 超长类型文本不缓存（内联更省空间，这些类型通常出现频率低，-1 表示不限制）
+  if (
+    config.cacheMaxTypeTextLength !== -1 &&
+    typeText.length > config.cacheMaxTypeTextLength
+  ) {
     return null;
   }
 

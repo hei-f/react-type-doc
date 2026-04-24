@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.6] - 2026-04-23
+
+### Fixed
+
+- 回滚 CodeMirror 相关依赖升级，修复编辑器面板布局异常
+
+## [1.3.5] - 2026-04-23
+
+### Changed
+
+- 升级 ts-morph 至 v28.0.0（内置 TypeScript 6.0.2 编译器）
+- 升级 TypeScript 至 v6.0.3
+- 升级 @types/node 至 v25、jsdom 至 v29、vitest 至 v4.1.5 等开发依赖
+- tsconfig 移除已废弃的 `downlevelIteration`，lib 升级至 ES2022
+
+### Fixed
+
+- 修复测试代码中 `TypeInfo` 联合类型缺少类型收窄导致的类型错误
+
+## [1.3.4] - 2026-04-23
+
+### Fixed
+
+- 修复当 tsconfig.json 未显式设置 `moduleResolution` 时，TypeScript 5.x 回退到 Classic 策略导致 node_modules 中的外部包类型无法解析，union 数组如 `(WidgetType | string)[]` 退化为 `any[]` 的问题
+
+## [1.3.3] - 2026-04-23
+
+### Added
+
+- 解析选项 `maxDepth`、`maxTypeTextLength`、`maxDetailedTypeTextLength`、`cacheMaxTypeTextLength` 支持传入 `-1` 表示不限制
+
 ## [1.3.2] - 2026-03-27
 
 ### Fixed

@@ -5,8 +5,8 @@
 
 /** 解析选项 */
 interface ParseOptionsInput {
-  maxDepth?: number;
-  cacheMaxTypeTextLength?: number;
+  maxDepth?: number; // -1 表示不限制
+  cacheMaxTypeTextLength?: number; // -1 表示不限制
   enableSourceLocation?: boolean;
   skipDeepParseTypes?: Set<string>;
   skipDeepParsePrefixes?: string[];

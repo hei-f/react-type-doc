@@ -10,7 +10,7 @@ import {
   createTestFile,
   getExportedType,
 } from '../../../__tests__/helpers/testUtils';
-import type { Project } from 'ts-morph';
+import { Project } from 'ts-morph';
 
 describe('集成测试', () => {
   let project: Project;
@@ -104,6 +104,57 @@ describe('集成测试', () => {
       const typeInfo = parseTypeInfo(type!);
 
       expect(typeInfo).toBeDefined();
+    });
+  });
+
+  describe('深度限制 -1 解除限制', () => {
+    it('maxDepth 为 -1 时不应截断深层嵌套类型', () => {
+      initParseOptions({ maxDepth: -1 });
+
+      createTestFile(
+        project,
+        'test.ts',
+        `
+        export type Deep = {
+          l1: {
+            l2: {
+              l3: {
+                l4: {
+                  l5: {
+                    l6: {
+                      l7: {
+                        value: string;
+                      };
+                    };
+                  };
+                };
+              };
+            };
+          };
+        };
+      `,
+      );
+
+      const type = getExportedType(project, 'test.ts', 'Deep');
+      const typeInfo = parseTypeInfo(type!);
+
+      expect(typeInfo).toBeDefined();
+      expect('$ref' in typeInfo).toBe(false);
+      if (!('$ref' in typeInfo)) {
+        expect(typeInfo.renderHint).not.toBe('truncated');
+      }
+
+      // 验证深层属性未被截断
+      function findTruncated(info: any): boolean {
+        if (info?.renderHint === 'truncated') return true;
+        if (info?.properties) {
+          return Object.values(info.properties).some((p: any) =>
+            findTruncated(p),
+          );
+        }
+        return false;
+      }
+      expect(findTruncated(typeInfo)).toBe(false);
     });
   });
 
@@ -634,6 +685,159 @@ describe('集成测试', () => {
       }
 
       recursiveCheckUnionTypes(typeInfo);
+    });
+  });
+
+  describe('外部包类型与本地类型组成 union 数组', () => {
+    it('(ExternalType | string)[] 应保留 union 结构，而非退化为 any[]', () => {
+      const externalProject = new Project({
+        compilerOptions: {
+          target: 99,
+          module: 99,
+          moduleResolution: 2, // Node10
+          strict: true,
+          types: [],
+        },
+        useInMemoryFileSystem: true,
+        skipFileDependencyResolution: true,
+      });
+      clearTypeCache();
+
+      externalProject.createSourceFile(
+        'node_modules/fake-external-pkg/index.d.ts',
+        `
+        export interface ExternalWidget {
+          id?: number | string;
+          name?: string;
+          type?: 'field' | 'container';
+          componentProps?: { [key: string]: any };
+          children?: ExternalWidget[];
+        }
+        `,
+      );
+
+      externalProject.createSourceFile(
+        'test.ts',
+        `
+        import type { ExternalWidget } from 'fake-external-pkg';
+        export type TestProps = {
+          /** union 数组：外部类型 + 本地 string */
+          widgets?: (ExternalWidget | string)[];
+          /** 对照组：纯本地类型 */
+          labels?: string[];
+        };
+        `,
+      );
+
+      const sourceFile = externalProject.getSourceFile('test.ts');
+      expect(sourceFile).toBeDefined();
+
+      const testType = sourceFile!.getTypeAlias('TestProps');
+      expect(testType).toBeDefined();
+
+      const type = testType!.getType();
+      const typeInfo = parseTypeInfo(type);
+
+      expect(typeInfo).toBeDefined();
+      expect('properties' in typeInfo && typeInfo.kind).toBe('object');
+
+      if (!('properties' in typeInfo) || !typeInfo.properties) return;
+
+      // widgets 应解析为 array，而非 any[]
+      const widgets = typeInfo.properties.widgets;
+      expect(widgets).toBeDefined();
+      if (!widgets || !('kind' in widgets)) return;
+
+      expect(widgets.kind).toBe('array');
+      expect(widgets.text).not.toBe('any[]');
+      expect(widgets.text).not.toContain('any');
+
+      // elementType 应为 union，包含 string 和 ExternalWidget
+      const elementType = (widgets as any).elementType;
+      expect(elementType).toBeDefined();
+      expect(elementType.kind).not.toBe('primitive');
+      expect(elementType.text).not.toBe('any');
+
+      // 对照组：labels 仍然正确解析
+      const labels = typeInfo.properties.labels;
+      expect(labels).toBeDefined();
+      if (labels && 'kind' in labels) {
+        expect(labels.kind).toBe('array');
+        const labelsElem = (labels as any).elementType;
+        // elementType 可能是 $ref（缓存引用）或内联类型
+        if (labelsElem && '$ref' in labelsElem) {
+          expect(labelsElem.$ref).toContain('string');
+        } else if (labelsElem) {
+          expect(labelsElem.text).toBe('string');
+        }
+      }
+    });
+
+    it('外部 interface 与 string 的 union 数组元素类型应为 union 而非 primitive', () => {
+      const externalProject = new Project({
+        compilerOptions: {
+          target: 99,
+          module: 99,
+          moduleResolution: 2,
+          strict: true,
+          types: [],
+        },
+        useInMemoryFileSystem: true,
+        skipFileDependencyResolution: true,
+      });
+      clearTypeCache();
+
+      externalProject.createSourceFile(
+        'node_modules/ext-lib/index.d.ts',
+        `
+        export interface ExtItem {
+          id: string;
+          value: number;
+        }
+        `,
+      );
+
+      externalProject.createSourceFile(
+        'test.ts',
+        `
+        import type { ExtItem } from 'ext-lib';
+        export type ListProps = {
+          items: (ExtItem | string | number)[];
+        };
+        `,
+      );
+
+      const sourceFile = externalProject.getSourceFile('test.ts');
+      const listType = sourceFile!.getTypeAlias('ListProps')!.getType();
+      const typeInfo = parseTypeInfo(listType);
+
+      if (!('properties' in typeInfo) || !typeInfo.properties) return;
+
+      const items = typeInfo.properties.items;
+      expect(items).toBeDefined();
+      if (!items || !('kind' in items)) return;
+
+      expect(items.kind).toBe('array');
+
+      const elementType = (items as any).elementType;
+      expect(elementType).toBeDefined();
+      expect(elementType.kind).toBe('union');
+      expect(elementType.text).not.toBe('any');
+
+      // union 中应包含 ExtItem（标记为 external）和基本类型
+      const unionTypes = elementType.unionTypes as any[];
+      expect(unionTypes.length).toBeGreaterThanOrEqual(2);
+
+      const hasExternal = unionTypes.some(
+        (t: any) =>
+          ('renderHint' in t && t.renderHint === 'external') ||
+          ('$ref' in t),
+      );
+      const hasString = unionTypes.some(
+        (t: any) => ('text' in t && t.text === 'string') || '$ref' in t,
+      );
+      expect(hasExternal).toBe(true);
+      expect(hasString).toBe(true);
     });
   });
 });

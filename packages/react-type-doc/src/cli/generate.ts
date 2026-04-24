@@ -105,6 +105,23 @@ function logSummary(
 // ============================================================
 
 /**
+ * 解析 tsconfig 中用户显式设置的 moduleResolution（含 extends 继承链）
+ */
+export function resolveUserModuleResolution(
+  tsConfigPath: string,
+): number | undefined {
+  const parsed = ts.getParsedCommandLineOfConfigFile(
+    tsConfigPath,
+    {},
+    {
+      ...ts.sys,
+      onUnRecoverableConfigFileDiag: () => {},
+    },
+  );
+  return parsed?.options?.moduleResolution;
+}
+
+/**
  * 解析单个注册项
  */
 function parseRegistryItem(
@@ -260,10 +277,8 @@ export async function runGenerate(): Promise<void> {
     // 解析 tsconfig 路径
     const tsConfigPath = pathResolver.resolve(config.tsConfigPath);
 
-    // 读取 tsconfig 判断是否已显式设置 moduleResolution
-    const rawTsConfig = ts.readConfigFile(tsConfigPath, ts.sys.readFile);
-    const userModuleResolution =
-      rawTsConfig.config?.compilerOptions?.moduleResolution;
+    // 读取 tsconfig 判断是否已显式设置 moduleResolution（支持 extends 继承链）
+    const userModuleResolution = resolveUserModuleResolution(tsConfigPath);
 
     const project = new Project({
       tsConfigFilePath: tsConfigPath,

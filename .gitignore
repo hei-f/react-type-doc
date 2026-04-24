@@ -49,6 +49,11 @@ Thumbs.db
 !.cursor/skills/react-type-doc/
 DETAILED_COMPARISON.md
 
+.claude/*
+!.claude/commands/
+.claude/commands/*
+!.claude/commands/publish-npm.md
+
 # External project directories (not part of this repo)
 morse-operateplatform/
 repro-external-type-any/
